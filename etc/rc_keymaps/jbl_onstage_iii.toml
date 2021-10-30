@@ -1,0 +1,14 @@
+[[protocols]]
+name = "jbl_onstage_iii"
+protocol = "nec"
+[protocols.scancodes]
+0x40af01 = "KEY_VOLUMEDOWN"
+0x40af03 = "KEY_VOLUMEUP"
+0x40af02 = "KEY_PLAY"
+0x40af19 = "KEY_MUTE"
+0x40af12 = "KEY_REWIND"
+0x40af05 = "KEY_FASTFORWARD"
+0x40af1e = "KEY_CHANNELUP"
+0x40af0f = "KEY_CHANNELDOWN"
+0x40af1a = "KEY_MENU"
+0x40af06 = "KEY_SELECT"

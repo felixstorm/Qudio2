@@ -1,0 +1,4 @@
+mnt/dietpi_userdata/spotifyd/spotifyd.conf
+boot/dietpi-wifi.txt
+spotifyd_creds_*.sh
+ReadMeInternal.md
