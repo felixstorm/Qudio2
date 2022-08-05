@@ -2,8 +2,9 @@
 
 # based on http://www.tilman.de/projekte/qudio
 
-import os
+import asyncio
 import logging
+import os
 import configparser
 
 # spotifyd seems to not be able to activate itself as a player (OpenUri will only work if it already is active),
@@ -35,11 +36,21 @@ async def spot_get_player_id(tk_spotify):
     local_player_name = config["global"]["device_name"].strip('"') or "Spotifyd"
     logging.info(f"Found local Spotify Connect Player name to be '{local_player_name}'")
 
-    tk_devices = await tk_spotify.playback_devices()
-    logging.debug("Spotify Connect Devices")
-    for tk_device in tk_devices:
-        logging.debug(tk_device)
-    tk_local_device = next(x for x in tk_devices if x.name.startswith(local_player_name))
+    attempts = 0
+    while True:
+        attempts += 1
+        tk_devices = await tk_spotify.playback_devices()
+        logging.info("Currently Active Spotify Connect Devices:")
+        for tk_device in tk_devices:
+            logging.info(tk_device)
+        tk_local_device = next((x for x in tk_devices if x.name.startswith(local_player_name)), None)
+        if tk_local_device is not None:
+            break
+        if attempts >= 3:
+            raise Exception(f"Unable to find local Spotify Connect device named '{local_player_name}'")
+        logging.warning(f"Unable to find local Spotify Connect device named '{local_player_name}', delaying a bit and retrying...")
+        await asyncio.sleep(2)
+
     logging.info(f"Using Spotify Connect device '{tk_local_device.name}' with id {tk_local_device.id}")
     return tk_local_device.id
 

@@ -2,10 +2,12 @@
 
 # based on http://www.tilman.de/projekte/qudio
 
-import asyncio
-import logging
 import os
-import RPi.GPIO as GPIO
+IS_RPI = os.path.isdir("/boot/dietpi")
+import logging
+import asyncio
+if IS_RPI:
+    import RPi.GPIO as GPIO
 import time
 import subprocess
 import select  # for polling zbarcam, see http://stackoverflow.com/a/10759061/3761783
@@ -39,33 +41,34 @@ async def main():
     logging.info(f'Starting')
 
     try:
-        logging.info('Connect to Spotify')
-        global tk_spotify, tk_player_args
-        tk_spotify = qudiolib_async.spot_get_spotify()
-        tk_player_args = await qudiolib_async.spot_get_player_args(tk_spotify)
+        if IS_RPI:
+            logging.info('Connect to Spotify')
+            global tk_spotify, tk_player_args
+            tk_spotify = qudiolib_async.spot_get_spotify()
+            tk_player_args = await qudiolib_async.spot_get_player_args(tk_spotify)
 
-        logging.info('Pepare GPIOs')
-        GPIO.setmode(GPIO.BCM)
+            logging.info('Pepare GPIOs')
+            GPIO.setmode(GPIO.BCM)
 
-        logging.info('Attach sensor and LED GPIOs')
-        GPIO.setup(PIN_LED, GPIO.OUT)
-        GPIO.output(PIN_LED, GPIO.LOW)
-        GpioInputAsync(PIN_SENSOR, handler_callback_async=scan_qrcode_async).begin()
+            logging.info('Attach sensor and LED GPIOs')
+            GPIO.setup(PIN_LED, GPIO.OUT)
+            GPIO.output(PIN_LED, GPIO.LOW)
+            GpioInputAsync(PIN_SENSOR, handler_callback_async=scan_qrcode_async).begin()
 
-        logging.info('Attach button GPIOs')
-        button_short_press_commands = {
-            PIN_PREV: lambda: spotify_command('previous'),
-            PIN_PLAY: lambda: spotify_command('play_pause'),
-            PIN_NEXT: lambda: spotify_command('next')
-        }
-        button_long_press_commands = {
-            PIN_PREV: lambda down_secs: spotify_command('seek_delta', seconds=-5 * down_secs),
-            PIN_PLAY: lambda down_secs: None,  # stop is not (yet) implemented,
-            PIN_NEXT: lambda down_secs: spotify_command('seek_delta', seconds=5 * down_secs)
-        }
-        for pin in (PIN_PLAY, PIN_PREV, PIN_NEXT):
-            GpioInputAsync(pin, button_short_press_commands=button_short_press_commands,
-                           button_long_press_commands=button_long_press_commands).begin()
+            logging.info('Attach button GPIOs')
+            button_short_press_commands = {
+                PIN_PREV: lambda: spotify_command('previous'),
+                PIN_PLAY: lambda: spotify_command('play_pause'),
+                PIN_NEXT: lambda: spotify_command('next')
+            }
+            button_long_press_commands = {
+                PIN_PREV: lambda down_secs: spotify_command('seek_delta', seconds=-5 * down_secs),
+                PIN_PLAY: lambda down_secs: None,  # stop is not (yet) implemented,
+                PIN_NEXT: lambda down_secs: spotify_command('seek_delta', seconds=5 * down_secs)
+            }
+            for pin in (PIN_PLAY, PIN_PREV, PIN_NEXT):
+                GpioInputAsync(pin, button_short_press_commands=button_short_press_commands,
+                            button_long_press_commands=button_long_press_commands).begin()
 
         try:
             ir_remote = evdev.InputDevice('/dev/input/event0')

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+IS_RPI = os.path.isdir("/boot/dietpi")
 import logging
 from enum import Enum
 from pathlib import Path
@@ -11,8 +12,11 @@ import socket
 
 import qudiolib
 
-from luma.core.interface.serial import i2c
-from luma.oled.device import sh1106
+if IS_RPI:
+    from luma.core.interface.serial import i2c
+    from luma.oled.device import sh1106
+else:
+    from luma.emulator.device import pygame
 from PIL import Image, ImageDraw, ImageFont
 
 from watchdog.observers import Observer
@@ -46,8 +50,9 @@ class PlayerHelper:
         self.tmp_file_event_handler = SpotifydTmpFileEventHandler()
         self.tmp_file_event_handler.begin(self.update_player_display)
 
-        self.spot_spotify = qudiolib.spot_get_spotify()
-        self.spot_player_id = qudiolib.spot_get_player_id(self.spot_spotify)
+        if IS_RPI:
+            self.spot_spotify = qudiolib.spot_get_spotify()
+            self.spot_player_id = qudiolib.spot_get_player_id(self.spot_spotify)
 
         spot_is_playing_last = False
         spot_is_playing_last_time = 0
@@ -140,8 +145,11 @@ class DisplayHelper:
     now_string_last = ""
 
     def __init__(self):
-        olde_i2c = i2c(port=1, address=0x3C)
-        self.oled_device = sh1106(olde_i2c, rotate=2)
+        if IS_RPI:
+            oled_i2c = i2c(port=1, address=0x3C)
+            self.oled_device = sh1106(oled_i2c, rotate=2)
+        else:
+            self.oled_device = pygame(mode='1', transform='smoothscale', scale=4, frame_rate=10)
         self.oled_image = Image.new(self.oled_device.mode, self.oled_device.size, 'black')
         self.oled_draw = ImageDraw.Draw(self.oled_image)
         self.lh = 11
@@ -232,6 +240,8 @@ class DisplayHelper:
             y += line * self.lh
         if font is None:
             font = self.default_font
+            # remove all characters invalid in Latin-1 as PIL default font does only seem to contain Latin-1 code page
+            text = bytes(text,'iso-8859-1', 'replace').decode('iso-8859-1')
         self.oled_draw.text((x, y), text, fill='white', font=font)
 
     def text_ra(self, text, line=None, y=None, font=None):
