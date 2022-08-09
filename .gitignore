@@ -1,4 +1,7 @@
-mnt/dietpi_userdata/spotifyd/spotifyd.conf
+*.pyc
+
 boot/dietpi-wifi.txt
-spotifyd_creds_*.sh
+dev/qudio_*.ini
+mnt/dietpi_userdata/qudio/qudio.ini
+
 ReadMeInternal.md

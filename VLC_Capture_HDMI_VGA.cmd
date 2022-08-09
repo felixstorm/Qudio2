@@ -1,1 +1,0 @@
-start "VLC" "C:\Program Files\VideoLAN\VLC\vlc.exe" dshow:// --dshow-vdev="USB Video" --dshow-aspect-ratio=16:9 --dshow-size=1920x1080

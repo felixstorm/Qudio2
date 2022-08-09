@@ -1,9 +1,11 @@
 #!/bin/bash
 
+echo "*** $(realpath $BASH_SOURCE) Starting on $(hostname -A) ($(hostname -I))"
+
 # when called by plink, PATH is not correct
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH
 
-pushd /mnt/dietpi_userdata/spotifyd >/dev/null
+pushd /mnt/dietpi_userdata/qudio >/dev/null
 echo "PWD: ${PWD}"
 
 DEB_PACKAGES="fswebcam zbar-tools libopenjp2-7 ir-keytable" # libopenjp2-7 is for luma.oled
@@ -20,32 +22,31 @@ else
     echo "Python Packages are already installed: ${PIP_PACKAGES}"
 fi
 
-# spotifyd hook needs a shell
-usermod --shell /bin/bash spotifyd
-usermod -a -G gpio,video,i2c,input spotifyd
+# librespot needs a user (with shell for the hook)
+id -u qudio &>/dev/null || sudo useradd qudio
+sudo usermod --home /mnt/dietpi_userdata/qudio --shell /bin/bash qudio
+sudo usermod -a -G audio,gpio,video,i2c,input qudio
 
-# copying using SSHFS will mess up permissions
-chown -R spotifyd:root .
-chmod -R 644 .
-find -type d -exec chmod +x {} \;
-chmod +x *.py *.sh
+# copying using SSHFS might mess up permissions
+chown qudio:root -R .
+chmod u+rw,g+r-w,o+r-w -R .
+chmod u+rw,g+r-w,o+r-w \
+    /etc/asound.conf \
+    /etc/rc_keymaps/jbl_onstage_iii.toml \
+    /etc/systemd/system/qudio-*.service /etc/systemd/system/librespot.service
 
-if test -f spotifyd_creds.sh; then
-  . spotifyd_creds.sh
-  echo "Using device '${SPOTCONF_DEVICE_NAME}' and user '${SPOTCONF_USERNAME}' for spotifyd."
-  sed -i "s/^username\s*=\s*\"[^\"]*\"/username = \"${SPOTCONF_USERNAME}\"/g" spotifyd.conf
-  sed -i "s/^password\s*=\s*\"[^\"]*\"/password = \"${SPOTCONF_PASSWORD}\"/g" spotifyd.conf
-  sed -i "s/^device_name\s*=\s*\"[^\"]*\"/device_name = \"${SPOTCONF_DEVICE_NAME}\"/g" spotifyd.conf
-  sed -i "s/^SPOTIFY_USER_REFRESH\s*=\s*\"[^\"]*\"/SPOTIFY_USER_REFRESH = \"${SPOTCONF_SPOTIFY_USER_REFRESH}\"/g" spotifyd.conf
-fi
-
-chmod 644 /etc/asound.conf /etc/systemd/system/qudio-*.service /etc/systemd/system/spotifyd.service.d/override.conf /etc/rc_keymaps/jbl_onstage_iii.toml
-
+# Raspberry Pi 3 QA system only
 if [[ $(aplay -L) =~ "bcm2835" ]]; then
   sed -i 's/"dmix"/"hw:0,0"/g' /etc/asound.conf
 fi
 
+if [ -e /etc/systemd/system/spotifyd.service ]; then
+  # disabling does not survive reboots (for whatever reason) and masking is not possible for unit files in /etc/systemd/system
+  systemctl stop spotifyd.service
+  mv -f /etc/systemd/system/spotifyd.service spotifyd.service.disabled
+fi
 systemctl daemon-reload
+systemctl enable librespot.service
 systemctl enable qudio-display.service
 systemctl enable qudio-control.service
 
@@ -65,3 +66,5 @@ if ! grep -q 'jbl_onstage_iii' /etc/rc_maps.cfg ; then
 fi
 
 popd >/dev/null
+
+echo "*** $(realpath $BASH_SOURCE) Completed"

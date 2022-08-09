@@ -36,11 +36,12 @@
     ```
 
 - Manual Steps
+  - => *SSH-Key should be possible to set using AUTO_SETUP_SSH_PUBKEY in `dietpi.txt` since DietPi 8.5*
   ```
-  # openssh-sftp-server allows to use WinSCP / SSHFS even with Dropbear
-  apt install -y openssh-sftp-server
+  # openssh-sftp-server allows to use sftp: / SSHFS even with Dropbear, rsync to copy files
+  apt install -y openssh-sftp-server rsync
 
-  # add your SSH key (but should probably also work without it if you do not change the DietPi default password)
+  # add your SSH key
   cd ~; mkdir .ssh; touch .ssh/authorized_keys; chmod 0700 ~/.ssh -R; chown root:root ~/.ssh -R; nano .ssh/
   authorized_keys
   ssh-rsa xxxxx yy:yy:yy:yy:... rsa-key-name

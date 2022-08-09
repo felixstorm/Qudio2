@@ -2,7 +2,7 @@
 @pushd %~dpn0
 
 @set SOURCE_FOLDER=..\qudio\code\sounds
-@set TARGET_FOLDER=mnt\dietpi_userdata\spotifyd\sounds
+@set TARGET_FOLDER=mnt\dietpi_userdata\qudio\sounds
 
 ffmpeg -i %SOURCE_FOLDER%\scanning.mp3 -acodec pcm_u8 -ar 22050 %TARGET_FOLDER%\scanning.wav
 ffmpeg -i %SOURCE_FOLDER%\ok.mp3 -acodec pcm_u8 -ar 22050 %TARGET_FOLDER%\ok.wav

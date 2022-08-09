@@ -1,13 +1,12 @@
 [Unit]
 Description=Qudio Control
-Requires=spotifyd.service
-After=spotifyd.service
+Requires=librespot.service
+After=librespot.service
 
 [Service]
-User=spotifyd
-WorkingDirectory=/mnt/dietpi_userdata/spotifyd
-ExecStart=python3 /mnt/dietpi_userdata/spotifyd/qudio-control.py
-ExecStopPost=bash -c '[ "$SERVICE_RESULT" = "exit-code" ] && pkill spotifyd'
+User=qudio
+WorkingDirectory=/mnt/dietpi_userdata/qudio
+ExecStart=python3 /mnt/dietpi_userdata/qudio/qudio-control.py
 Restart=always
 RestartSec=3
 

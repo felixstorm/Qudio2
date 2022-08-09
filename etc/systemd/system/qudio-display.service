@@ -1,14 +1,14 @@
 [Unit]
 Description=Qudio Display
-Requires=spotifyd.service
-After=spotifyd.service
+Requires=librespot.service
+After=librespot.service
 
 [Service]
-User=spotifyd
-WorkingDirectory=/mnt/dietpi_userdata/spotifyd
-ExecStart=python3 /mnt/dietpi_userdata/spotifyd/qudio-display.py
+User=qudio
+WorkingDirectory=/mnt/dietpi_userdata/qudio
+ExecStart=python3 /mnt/dietpi_userdata/qudio/qudio-display.py
 Restart=always
-RestartSec=5
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target

@@ -29,8 +29,8 @@ CLOCK_FONT_PATH = os.path.join(os.path.dirname(__file__), "OpenSans-SemiBold.ttf
 def main():
     logging.basicConfig(format=',%(msecs)03d %(levelname)-5.5s [%(filename)-12.12s:%(lineno)3d] %(message)s',
                         level=os.environ.get('LOGLEVEL', 'INFO').upper())
-    logging.info(f'Starting using path "{qudiolib.SPOTD_EVENT_FILE}"')
-    Path(qudiolib.SPOTD_EVENT_FOLDER).mkdir(parents=True, exist_ok=True)
+    logging.info(f'Starting using path "{qudiolib.LIBRESPOT_EVENT_FILE}"')
+    Path(qudiolib.LIBRESPOT_EVENT_FOLDER).mkdir(parents=True, exist_ok=True)
 
     PlayerHelper().run()
 
@@ -47,12 +47,11 @@ class PlayerHelper:
         signal.signal(signal.SIGINT, self.signal)
         signal.signal(signal.SIGTERM, self.signal)
 
-        self.tmp_file_event_handler = SpotifydTmpFileEventHandler()
+        self.tmp_file_event_handler = LibrespotTmpFileEventHandler()
         self.tmp_file_event_handler.begin(self.update_player_display)
 
-        if IS_RPI:
-            self.spot_spotify = qudiolib.spot_get_spotify()
-            self.spot_player_id = qudiolib.spot_get_player_id(self.spot_spotify)
+        self.spot_spotify = qudiolib.spot_get_spotify()
+        self.spot_player_id = qudiolib.spot_get_player_id(self.spot_spotify)
 
         spot_is_playing_last = False
         spot_is_playing_last_time = 0
@@ -264,12 +263,12 @@ class DisplayHelper:
         return IP
 
 
-class SpotifydTmpFileEventHandler(FileSystemEventHandler):
+class LibrespotTmpFileEventHandler(FileSystemEventHandler):
 
     def begin(self, on_event_func):
         self.on_event_func = on_event_func
         self.observer = Observer()
-        self.observer.schedule(self, path=qudiolib.SPOTD_EVENT_FOLDER, recursive=False)
+        self.observer.schedule(self, path=qudiolib.LIBRESPOT_EVENT_FOLDER, recursive=False)
         self.observer.start()
 
     def end(self):
@@ -277,7 +276,7 @@ class SpotifydTmpFileEventHandler(FileSystemEventHandler):
         self.observer.join()
 
     def on_modified(self,  event):
-        if event.src_path == qudiolib.SPOTD_EVENT_FILE:
+        if event.src_path == qudiolib.LIBRESPOT_EVENT_FILE:
             self.on_event_func()
 
 
