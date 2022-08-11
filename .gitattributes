@@ -1,2 +1,2 @@
 opt/librespot/librespot filter=lfs diff=lfs merge=lfs -text
-dev/librespot_x86-64 filter=lfs diff=lfs merge=lfs -text
+.develop/librespot_x86-64 filter=lfs diff=lfs merge=lfs -text

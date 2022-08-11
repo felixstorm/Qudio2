@@ -1,7 +1,8 @@
+/.develop/qudio_*.ini
+/librespot
+/ReadMeInternal.md
+
+/boot/dietpi-wifi.txt
+/mnt/dietpi_userdata/qudio/qudio.ini
+
 *.pyc
-
-boot/dietpi-wifi.txt
-dev/qudio_*.ini
-mnt/dietpi_userdata/qudio/qudio.ini
-
-ReadMeInternal.md
