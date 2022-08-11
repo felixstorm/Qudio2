@@ -11,6 +11,20 @@ pushd /mnt/dietpi_userdata/qudio >/dev/null
 echo "PWD: ${PWD}"
 
 
+# copying using SSHFS might mess up permissions
+chown qudio:root -R .
+chmod u+rw,g+r-w,o+r-w -R .
+chmod u+rw,g+r-w,o+r-w \
+    /etc/asound.conf \
+    /etc/rc_keymaps/jbl_onstage_iii.toml \
+    /etc/systemd/system/qudio-*.service /etc/systemd/system/librespot.service
+
+# Raspberry Pi 3 QA system only
+if [[ $(aplay -L) =~ "bcm2835" ]]; then
+  sed -i 's/"dmix"/"hw:0,0"/g' /etc/asound.conf
+fi
+
+
 # cannot use subfolders as they would need to be created on every boot
 rm -rf /var/lib/dhcp; ln -s /run /var/lib/dhcp
 rm -rf /var/tmp/dietpi/logs; ln -s /tmp /var/tmp/dietpi/logs
@@ -24,20 +38,6 @@ if ! grep -q 'dtoverlay=gpio-ir' /boot/config.txt ; then
 fi
 if ! grep -q 'jbl_onstage_iii' /etc/rc_maps.cfg ; then
   echo -e "\n*       *                        jbl_onstage_iii.toml" >> /etc/rc_maps.cfg
-fi
-
-
-# copying using SSHFS might mess up permissions
-chown qudio:root -R .
-chmod u+rw,g+r-w,o+r-w -R .
-chmod u+rw,g+r-w,o+r-w \
-    /etc/asound.conf \
-    /etc/rc_keymaps/jbl_onstage_iii.toml \
-    /etc/systemd/system/qudio-*.service /etc/systemd/system/librespot.service
-
-# Raspberry Pi 3 QA system only
-if [[ $(aplay -L) =~ "bcm2835" ]]; then
-  sed -i 's/"dmix"/"hw:0,0"/g' /etc/asound.conf
 fi
 
 

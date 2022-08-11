@@ -14,7 +14,7 @@ shift
 
 set -x
 
-ssh $ssh_target 'mount -o remount,rw /; mount -o remount,rw /boot'
+ssh $ssh_target 'mount -o remount,rw /'
 
 # /boot has already been copied manually before
 rsync_includes=('/etc/***' '/mnt/***' '/opt/***')
@@ -28,7 +28,7 @@ rsync -avh \
 ssh $ssh_target '/mnt/dietpi_userdata/qudio/install.sh'
 
 if [ "$target" != "192.168.0.142" ]; then
-    ssh $ssh_target 'mount -o remount,ro /; mount -o remount,ro /boot'
+    ssh $ssh_target 'mount -o remount,ro /'
 fi
 
 ssh $ssh_target 'systemctl restart librespot.service; systemctl start qudio-control.service qudio-display.service'
