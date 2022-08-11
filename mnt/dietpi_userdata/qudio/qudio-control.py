@@ -2,20 +2,20 @@
 
 # based on http://www.tilman.de/projekte/qudio
 
-import os
-IS_RPI = os.path.isdir("/boot/dietpi")
-import logging
 import asyncio
-if IS_RPI:
-    import RPi.GPIO as GPIO
-import time
-import subprocess
+import logging
+import os
 import select  # for polling zbarcam, see http://stackoverflow.com/a/10759061/3761783
+import subprocess
 import threading
+import time
 
-import qudiolib_async
+import qudiolib
 
 import evdev
+
+if qudiolib.IS_RPI:
+    import RPi.GPIO as GPIO
 
 
 # Configuration
@@ -34,19 +34,19 @@ PIN_SENSOR, PIN_LED = 5, 22
 PIN_PREV, PIN_PLAY, PIN_NEXT = 10, 9, 11
 
 
-async def main():
+async def main_async():
 
     logging.basicConfig(format=',%(msecs)03d %(levelname)-5.5s [%(filename)-12.12s:%(lineno)3d] %(message)s',
                         level=os.environ.get('LOGLEVEL', 'INFO').upper())
     logging.info(f'Starting')
 
     try:
-        if IS_RPI:
-            logging.info('Connect to Spotify')
-            global tk_spotify, tk_player_args
-            tk_spotify = qudiolib_async.spot_get_spotify()
-            tk_player_args = await qudiolib_async.spot_get_player_args(tk_spotify)
+        logging.info('Connect to Spotify')
+        global tk_spotify, tk_player_args
+        tk_spotify = qudiolib.spot_get_spotify()
+        tk_player_args = await qudiolib.spot_get_player_args_async(tk_spotify)
 
+        if qudiolib.IS_RPI:
             logging.info('Pepare GPIOs')
             GPIO.setmode(GPIO.BCM)
 
@@ -57,14 +57,14 @@ async def main():
 
             logging.info('Attach button GPIOs')
             button_short_press_commands = {
-                PIN_PREV: lambda: spotify_command('previous'),
-                PIN_PLAY: lambda: spotify_command('play_pause'),
-                PIN_NEXT: lambda: spotify_command('next')
+                PIN_PREV: lambda: spotify_command_async('previous'),
+                PIN_PLAY: lambda: spotify_command_async('play_pause'),
+                PIN_NEXT: lambda: spotify_command_async('next')
             }
             button_long_press_commands = {
-                PIN_PREV: lambda down_secs: spotify_command('seek_delta', seconds=-5 * down_secs),
+                PIN_PREV: lambda down_secs: spotify_command_async('seek_delta', seconds=-5 * down_secs),
                 PIN_PLAY: lambda down_secs: None,  # stop is not (yet) implemented,
-                PIN_NEXT: lambda down_secs: spotify_command('seek_delta', seconds=5 * down_secs)
+                PIN_NEXT: lambda down_secs: spotify_command_async('seek_delta', seconds=5 * down_secs)
             }
             for pin in (PIN_PLAY, PIN_PREV, PIN_NEXT):
                 GpioInputAsync(pin, button_short_press_commands=button_short_press_commands,
@@ -76,16 +76,16 @@ async def main():
             ir_remote = None
         logging.info("IR remote: %s", ir_remote)
 
-        if not qudiolib_async.spot_get_is_playing():
-            await play_sound_start(SOUND_STARTUP)
+        if not qudiolib.spot_get_is_playing():
+            await play_sound_start_async(SOUND_STARTUP)
 
         logging.info('Started')
 
         if ir_remote:
             ir_commands = {
-                'KEY_CHANNELUP': lambda: spotify_command('previous'),
-                'KEY_PLAY': lambda: spotify_command('play_pause'),
-                'KEY_CHANNELDOWN': lambda: spotify_command('next')
+                'KEY_CHANNELUP': lambda: spotify_command_async('previous'),
+                'KEY_PLAY': lambda: spotify_command_async('play_pause'),
+                'KEY_CHANNELDOWN': lambda: spotify_command_async('next')
             }
             async for ir_event in ir_remote.async_read_loop():
                 ir_event = evdev.categorize(ir_event)
@@ -101,7 +101,8 @@ async def main():
 
     finally:
         logging.info('Reset GPIO configuration and close')
-        GPIO.cleanup()
+        if qudiolib.IS_RPI:
+            GPIO.cleanup()
 
 
 class GpioInputAsync:
@@ -166,16 +167,16 @@ class GpioInputAsync:
             command and await command()
 
 
-async def play_sound_start(wavFile):
+async def play_sound_start_async(wavFile):
     logging.info(f"Playing sound '{os.path.basename(wavFile)}'")
     return await asyncio.create_subprocess_exec('aplay', '-q', wavFile)
 
 
-async def spotify_command(command, context=None, seconds=None):
+async def spotify_command_async(command, context=None, seconds=None):
     logging.info(f"Sending command '{command}' (context='{context}', seconds={seconds}) to Spotify")
 
     if command == 'play_pause':
-        if qudiolib_async.spot_get_is_playing():
+        if qudiolib.spot_get_is_playing():
             await tk_spotify.playback_pause(**tk_player_args)
         else:
             await tk_spotify.playback_resume(**tk_player_args)
@@ -187,7 +188,7 @@ async def spotify_command(command, context=None, seconds=None):
         await tk_spotify.playback_next(**tk_player_args)
 
     elif command == 'seek_delta':
-        playback_state = await qudiolib_async.spot_get_playback_state(tk_spotify, tk_player_args["device_id"])
+        playback_state = await qudiolib.spot_get_playback_state_async(tk_spotify, tk_player_args["device_id"])
         if not playback_state:
             return
         seek_pos_ms = round(playback_state.progress_ms + seconds * 1000)
@@ -208,7 +209,7 @@ async def spotify_command(command, context=None, seconds=None):
 async def scan_qrcode_async(channel, event_time):  # need args, _ does not seem to work???
 
     logging.info('Photo sensor active, activating light and camera')
-    aplay_scanning = await play_sound_start(SOUND_SCANNING)
+    aplay_scanning = await play_sound_start_async(SOUND_SCANNING)
     GPIO.output(PIN_LED, GPIO.HIGH)
 
     # scan QR code
@@ -236,8 +237,8 @@ async def scan_qrcode_async(channel, event_time):  # need args, _ does not seem 
         logging.info(f"QR Code: {qr_code}")
 
         if qr_code.startswith("spotify:playlist:") or qr_code.startswith("spotify:album:"):
-            await play_sound_start(SOUND_SCAN_OK)
-            await spotify_command('start_context', context=qr_code)
+            await play_sound_start_async(SOUND_SCAN_OK)
+            await spotify_command_async('start_context', context=qr_code)
             qr_valid = True
         else:
             logging.warning(f"Invalid QR Code: {qr_code}")
@@ -246,7 +247,7 @@ async def scan_qrcode_async(channel, event_time):  # need args, _ does not seem 
         logging.warning('Timeout on zbarcam')
 
     if not qr_valid:
-        await play_sound_start(SOUND_SCAN_FAIL)
+        await play_sound_start_async(SOUND_SCAN_FAIL)
 
     # wait until sensor is not blocked anymore
     while GPIO.input(PIN_SENSOR) == GPIO.LOW:
@@ -257,7 +258,7 @@ async def scan_qrcode_async(channel, event_time):  # need args, _ does not seem 
 
 
 try:
-    asyncio.run(main())
+    asyncio.run(main_async())
 except KeyboardInterrupt:
     # Exit when Ctrl-C is pressed
     logging.info('Shutdown')

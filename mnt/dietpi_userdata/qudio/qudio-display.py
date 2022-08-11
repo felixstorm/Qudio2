@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 
-import os
-IS_RPI = os.path.isdir("/boot/dietpi")
-import logging
-from enum import Enum
-from pathlib import Path
-import time
-import signal
+import asyncio
 from datetime import datetime
+from enum import Enum
+import logging
+import os
+from pathlib import Path
+import signal
 import socket
+import time
 
 import qudiolib
 
-if IS_RPI:
+if qudiolib.IS_RPI:
     from luma.core.interface.serial import i2c
     from luma.oled.device import sh1106
 else:
@@ -22,17 +22,19 @@ from PIL import Image, ImageDraw, ImageFont
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-# TBD DEFAULT_FONT_PATH = os.path.join(os.path.dirname(__file__), "OpenSans-Regular.ttf")
-CLOCK_FONT_PATH = os.path.join(os.path.dirname(__file__), "OpenSans-SemiBold.ttf")
+
+this_dir = os.path.dirname(__file__)
+# TBD DEFAULT_FONT_PATH = os.path.join(this_dir, "OpenSans-Regular.ttf")
+CLOCK_FONT_PATH = os.path.join(this_dir, "OpenSans-SemiBold.ttf")
 
 
-def main():
+async def main_async():
     logging.basicConfig(format=',%(msecs)03d %(levelname)-5.5s [%(filename)-12.12s:%(lineno)3d] %(message)s',
                         level=os.environ.get('LOGLEVEL', 'INFO').upper())
     logging.info(f'Starting using path "{qudiolib.LIBRESPOT_EVENT_FILE}"')
     Path(qudiolib.LIBRESPOT_EVENT_FOLDER).mkdir(parents=True, exist_ok=True)
 
-    PlayerHelper().run()
+    await PlayerHelper().run_async()
 
     logging.info('Exiting')
 
@@ -41,7 +43,7 @@ class PlayerHelper:
     thread_should_stop = False
     display_player_info_at = 0
 
-    def run(self):
+    async def run_async(self):
         self.display = DisplayHelper()
 
         signal.signal(signal.SIGINT, self.signal)
@@ -51,7 +53,7 @@ class PlayerHelper:
         self.tmp_file_event_handler.begin(self.update_player_display)
 
         self.spot_spotify = qudiolib.spot_get_spotify()
-        self.spot_player_id = qudiolib.spot_get_player_id(self.spot_spotify)
+        self.spot_player_id = await qudiolib.spot_get_player_id_async(self.spot_spotify)
 
         spot_is_playing_last = False
         spot_is_playing_last_time = 0
@@ -82,7 +84,7 @@ class PlayerHelper:
                     f'update_metadata: {update_metadata}, display_player_info_at: {self.display_player_info_at}, update_metadata_last_time: {update_metadata_last_time} (now: {now})')
                 if update_metadata:
 
-                    playback_state = qudiolib.spot_get_playback_state(self.spot_spotify, self.spot_player_id)
+                    playback_state = await qudiolib.spot_get_playback_state_async(self.spot_spotify, self.spot_player_id)
                     if playback_state is not None and playback_state.item is not None:
                         item = playback_state.item
                         artist = item.artists[0].name if item.artists is not None else ""
@@ -118,7 +120,10 @@ class PlayerHelper:
             self.display.update_other()
 
             spot_is_playing_last = spot_is_playing
-            time.sleep(1 - (time.time() - now))
+
+            next_frame_delay = 1 - (time.time() - now)
+            if next_frame_delay > 0:
+                await asyncio.sleep(next_frame_delay)
 
         self.tmp_file_event_handler.end()
 
@@ -144,7 +149,7 @@ class DisplayHelper:
     now_string_last = ""
 
     def __init__(self):
-        if IS_RPI:
+        if qudiolib.IS_RPI:
             oled_i2c = i2c(port=1, address=0x3C)
             self.oled_device = sh1106(oled_i2c, rotate=2)
         else:
@@ -280,4 +285,8 @@ class LibrespotTmpFileEventHandler(FileSystemEventHandler):
             self.on_event_func()
 
 
-main()
+try:
+    asyncio.run(main_async())
+except KeyboardInterrupt:
+    # Exit when Ctrl-C is pressed
+    logging.info('Shutdown')
