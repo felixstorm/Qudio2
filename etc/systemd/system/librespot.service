@@ -32,9 +32,6 @@ ExecStart=/opt/librespot/librespot \
     --onevent /mnt/dietpi_userdata/qudio/librespot_hook.sh \
     --initial-volume 50
 
-# delay a little bit for device to become registered with Spotify (does not seem to be required anymore as of 2022-08-09)
-# ExecStartPost=/bin/sleep 1
-
 Restart=always
 RestartSec=3
 

@@ -17,7 +17,7 @@ chmod u+rw,g+r-w,o+r-w -R .
 chmod u+rw,g+r-w,o+r-w \
     /etc/asound.conf \
     /etc/rc_keymaps/jbl_onstage_iii.toml \
-    /etc/systemd/system/qudio-*.service /etc/systemd/system/librespot.service
+    /etc/systemd/system/qudio.service /etc/systemd/system/librespot.service
 
 # Raspberry Pi 3 QA system only
 if [[ $(aplay -L) =~ "bcm2835" ]]; then
@@ -71,9 +71,7 @@ if [ -e /etc/systemd/system/spotifyd.service ]; then
   mv -f /etc/systemd/system/spotifyd.service spotifyd.service.disabled
 fi
 systemctl daemon-reload
-systemctl enable librespot.service
-systemctl enable qudio-display.service
-systemctl enable qudio-control.service
+systemctl enable librespot.service qudio.service
 
 
 popd >/dev/null

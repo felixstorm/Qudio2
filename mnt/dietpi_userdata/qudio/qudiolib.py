@@ -33,19 +33,19 @@ async def spot_get_player_id_async(tk_spotify):
     local_player_name = config["librespot"]["SPOTIFY_DEVICE_NAME"].strip('"') or "Librespot"
     logging.info(f"Found local Spotify Connect Player name to be '{local_player_name}'")
 
-    for try_count in reversed(range(5)):
+    for try_count in reversed(range(15)):
         tk_devices = await tk_spotify.playback_devices()
         logging.info("Currently Active Spotify Connect Devices:")
         for tk_device in tk_devices:
             logging.info(tk_device)
-        tk_local_device = next((x for x in tk_devices if x.name.startswith(local_player_name)), None)
+        tk_local_device = next((x for x in tk_devices if x.name == local_player_name), None)
         if tk_local_device is not None:
             break
         error_message = f"Unable to find local Spotify Connect device named '{local_player_name}'"
         if try_count == 0:
             raise Exception(error_message)
         logging.error(f"{error_message}, delaying and retrying...")
-        time.sleep(2)
+        time.sleep(1)
 
     logging.info(f"Using Spotify Connect device '{tk_local_device.name}' with id {tk_local_device.id}")
     return tk_local_device.id
@@ -92,7 +92,9 @@ async def spot_get_playback_state_async(tk_spotify, local_device_id=None):
     if playback_state is not None:
         logging.debug(playback_state.item)
 
-    if local_device_id is not None and (playback_state is None or playback_state.device is None or playback_state.device.id != local_device_id):
+    playback_state_device_id = playback_state and playback_state.device and playback_state.device.id
+    logging.debug(f"local_device_id: '{local_device_id}', playback_state_device_id: {playback_state_device_id}")
+    if playback_state_device_id != local_device_id:
         return None
 
     return playback_state

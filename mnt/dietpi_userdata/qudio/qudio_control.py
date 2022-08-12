@@ -35,18 +35,15 @@ PIN_SENSOR, PIN_LED = 5, 22
 PIN_PREV, PIN_PLAY, PIN_NEXT = 10, 9, 11
 
 
-async def main_async():
+async def main_async(tk_spotify_arg, tk_player_args_arg):
 
-    logging.basicConfig(format=',%(msecs)03d %(levelname)-5.5s [%(filename)-12.12s:%(lineno)3d] %(message)s',
-                        level=os.environ.get('LOGLEVEL', 'INFO').upper())
     logging.info(f'Starting')
 
-    try:
-        logging.info('Connect to Spotify')
-        global tk_spotify, tk_player_args
-        tk_spotify = qudiolib.spot_get_spotify()
-        tk_player_args = await qudiolib.spot_get_player_args_async(tk_spotify)
+    global tk_spotify, tk_player_args
+    tk_spotify = tk_spotify_arg
+    tk_player_args = tk_player_args_arg
 
+    try:
         if qudiolib.IS_RPI:
             logging.info('Pepare GPIOs')
             GPIO.setmode(GPIO.BCM)
@@ -110,9 +107,10 @@ async def main_async():
             await asyncio.Event().wait()
 
     finally:
-        logging.info('Reset GPIO configuration and close')
         if qudiolib.IS_RPI:
+            logging.info('Reset GPIO configuration')
             GPIO.cleanup()
+        logging.info('Exiting')
 
 
 class GpioInputAsync:
@@ -281,10 +279,3 @@ async def scan_qrcode_async(channel, event_time):  # need args, _ does not seem 
 
     # delay a bit more to allow to withdraw card without re-triggering sensor
     await asyncio.sleep(QR_SCANNER_DELAY_AFTER)
-
-
-try:
-    asyncio.run(main_async())
-except KeyboardInterrupt:
-    # Exit when Ctrl-C is pressed
-    logging.info('Shutdown')

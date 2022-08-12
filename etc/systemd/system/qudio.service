@@ -1,12 +1,12 @@
 [Unit]
-Description=Qudio Control
-Requires=librespot.service
-After=librespot.service
+Description=Qudio
+Wants=librespot.service
+After=network-online.target
 
 [Service]
 User=qudio
 WorkingDirectory=/mnt/dietpi_userdata/qudio
-ExecStart=python3 qudio-control.py
+ExecStart=python3 qudio.py
 Restart=always
 RestartSec=3
 
