@@ -31,4 +31,6 @@ if [ "$target" != "192.168.0.142" ]; then
     ssh $ssh_target 'mount -o remount,ro /'
 fi
 
-ssh $ssh_target 'systemctl restart librespot.service; systemctl start qudio-control.service qudio-display.service'
+if echo $* | grep -E --invert-match "(^|\s)(-n|--no-restart)($|\s)" -q; then
+    ssh $ssh_target 'systemctl restart librespot.service; systemctl start qudio-control.service qudio-display.service'
+fi
