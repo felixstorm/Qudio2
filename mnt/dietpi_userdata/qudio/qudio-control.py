@@ -5,6 +5,7 @@
 import asyncio
 import logging
 import os
+from pathlib import Path
 import select  # for polling zbarcam, see http://stackoverflow.com/a/10759061/3761783
 import subprocess
 import threading
@@ -59,21 +60,24 @@ async def main_async():
             button_short_press_commands = {
                 PIN_PREV: lambda: spotify_command_async('previous'),
                 PIN_PLAY: lambda: spotify_command_async('play_pause'),
-                PIN_NEXT: lambda: spotify_command_async('next')
+                PIN_NEXT: lambda: spotify_command_async('next'),
             }
             button_long_press_commands = {
                 PIN_PREV: lambda down_secs: spotify_command_async('seek_delta', seconds=-5 * down_secs),
-                PIN_PLAY: lambda down_secs: None,  # stop is not (yet) implemented,
-                PIN_NEXT: lambda down_secs: spotify_command_async('seek_delta', seconds=5 * down_secs)
+                PIN_PLAY: lambda down_secs: spotify_command_async('shuffle') if down_secs < 1.4 else None,
+                PIN_NEXT: lambda down_secs: spotify_command_async('seek_delta', seconds=5 * down_secs),
             }
             for pin in (PIN_PLAY, PIN_PREV, PIN_NEXT):
                 GpioInputAsync(pin, button_short_press_commands=button_short_press_commands,
                             button_long_press_commands=button_long_press_commands).begin()
 
-        try:
-            ir_remote = evdev.InputDevice('/dev/input/event0')
-        except:
-            ir_remote = None
+        if qudiolib.IS_RPI:
+            try:
+                ir_remote = evdev.InputDevice('/dev/input/event0')
+            except:
+                ir_remote = None
+        else:
+            ir_remote = evdev.InputDevice('/dev/input/by-path/platform-i8042-serio-0-event-kbd')
         logging.info("IR remote: %s", ir_remote)
 
         if not qudiolib.spot_get_is_playing():
@@ -83,9 +87,15 @@ async def main_async():
 
         if ir_remote:
             ir_commands = {
-                'KEY_CHANNELUP': lambda: spotify_command_async('previous'),
-                'KEY_PLAY': lambda: spotify_command_async('play_pause'),
-                'KEY_CHANNELDOWN': lambda: spotify_command_async('next')
+                'KEY_CHANNELUP':   lambda: spotify_command_async('previous'),
+                'KEY_PLAY':        lambda: spotify_command_async('play_pause'),
+                'KEY_CHANNELDOWN': lambda: spotify_command_async('next'),
+                'KEY_MENU':        lambda: spotify_command_async('shuffle'),
+                # development only
+                'KEY_LEFT':  lambda: spotify_command_async('previous'),
+                'KEY_SPACE': lambda: spotify_command_async('play_pause'),
+                'KEY_RIGHT': lambda: spotify_command_async('next'),
+                'KEY_S':     lambda: spotify_command_async('shuffle'),
             }
             async for ir_event in ir_remote.async_read_loop():
                 ir_event = evdev.categorize(ir_event)
@@ -140,15 +150,19 @@ class GpioInputAsync:
 
     async def gpio_event_callback_async(self, channel, event_time):
         logging.debug("gpio_event_callback_async: channel: %d, event_time: %f", channel, event_time)
-        # since GPIO bouncetime only suppresses repeating events, we need to deal with bounce on release ourselves
-        bounce_delay = event_time + self.BOUNCETIME - time.time()
-        if 0 < bounce_delay < self.BOUNCETIME:
-            await asyncio.sleep(bounce_delay)
-        state_now = GPIO.input(channel)
-        logging.debug("gpio_event_callback_async: bounce_delay: %f, state_now: %d", bounce_delay, state_now)
-        if state_now == GPIO.LOW:
-            await self.handler_callback_async(channel, event_time)
-        self.lock.release()
+        try:
+            # since GPIO bouncetime only suppresses repeating events, we need to deal with bounce on release ourselves
+            bounce_delay = event_time + self.BOUNCETIME - time.time()
+            if 0 < bounce_delay < self.BOUNCETIME:
+                await asyncio.sleep(bounce_delay)
+            state_now = GPIO.input(channel)
+            logging.debug("gpio_event_callback_async: bounce_delay: %f, state_now: %d", bounce_delay, state_now)
+            if state_now == GPIO.LOW:
+                await self.handler_callback_async(channel, event_time)
+        except BaseException as err:
+            logging.exception(err)
+        finally:
+            self.lock.release()
 
     async def button_callback_async(self, channel, time_button_down):
         logging.debug("button_callback_async: channel: %d, time_button_down: %f", channel, time_button_down)
@@ -159,12 +173,16 @@ class GpioInputAsync:
             # 0.5 seconds delay between subsequent long actons
             if now - time_last_long_action > 0.5:
                 command = self.button_long_press_commands.get(channel)
-                command and await command(now - time_button_down)
+                if command:
+                    command_awaitable = command(now - time_button_down)
+                    command_awaitable and await command_awaitable
                 time_last_long_action = now
             await asyncio.sleep(0.1)
         if time.time() - time_button_down < 1:
             command = self.button_short_press_commands.get(channel)
-            command and await command()
+            if command:
+                command_awaitable = command()
+                command_awaitable and await command_awaitable
 
 
 async def play_sound_start_async(wavFile):
@@ -175,7 +193,15 @@ async def play_sound_start_async(wavFile):
 async def spotify_command_async(command, context=None, seconds=None):
     logging.info(f"Sending command '{command}' (context='{context}', seconds={seconds}) to Spotify")
 
-    if command == 'play_pause':
+    if command in ['seek_delta', 'shuffle']:
+        playback_state = await qudiolib.spot_get_playback_state_async(tk_spotify, tk_player_args["device_id"])
+        if not playback_state:
+            return
+
+    if command == 'start_context':
+        await tk_spotify.playback_start_context(context, **tk_player_args)
+
+    elif command == 'play_pause':
         if qudiolib.spot_get_is_playing():
             await tk_spotify.playback_pause(**tk_player_args)
         else:
@@ -188,9 +214,6 @@ async def spotify_command_async(command, context=None, seconds=None):
         await tk_spotify.playback_next(**tk_player_args)
 
     elif command == 'seek_delta':
-        playback_state = await qudiolib.spot_get_playback_state_async(tk_spotify, tk_player_args["device_id"])
-        if not playback_state:
-            return
         seek_pos_ms = round(playback_state.progress_ms + seconds * 1000)
         if seek_pos_ms < 0:
             await tk_spotify.playback_previous(**tk_player_args)
@@ -199,8 +222,11 @@ async def spotify_command_async(command, context=None, seconds=None):
         else:
             await tk_spotify.playback_seek(seek_pos_ms, **tk_player_args)
 
-    elif command == 'start_context':
-        await tk_spotify.playback_start_context(context, **tk_player_args)
+    elif command == 'shuffle':
+        await tk_spotify.playback_shuffle(not playback_state.shuffle_state, **tk_player_args)
+        # delay (even more) for shuffle to become active and then inform qudio-display of the change
+        await asyncio.sleep(1)
+        Path(qudiolib.LIBRESPOT_EVENT_FULLNAME).touch(exist_ok=True)
 
     else:
         raise KeyError('command')

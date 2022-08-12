@@ -15,7 +15,7 @@ this_dir = os.path.dirname(__file__)
 IS_RPI = os.path.isdir("/boot/dietpi")
 QUDIO_INI_FILE = os.getenv('QUDIO_INI', os.path.join(this_dir, "qudio.ini"))
 LIBRESPOT_EVENT_FOLDER = "/tmp/librespot"
-LIBRESPOT_EVENT_FILE = os.path.join(LIBRESPOT_EVENT_FOLDER, "event")
+LIBRESPOT_EVENT_FULLNAME = os.path.join(LIBRESPOT_EVENT_FOLDER, "event")
 
 
 def spot_get_spotify():
@@ -60,7 +60,7 @@ async def spot_get_player_args_async(tk_spotify):
 def spot_get_local_status():
     event = position = duration = started_at = None
     try:
-        with open(LIBRESPOT_EVENT_FILE, "r") as file:
+        with open(LIBRESPOT_EVENT_FULLNAME, "r") as file:
             for index, line in enumerate(file):
                 line = line.strip()
                 if index == 0:
@@ -70,7 +70,7 @@ def spot_get_local_status():
                 elif index == 2 and line != "":
                     duration = float(line) / 1000
         if position is not None:
-            started_at = os.path.getmtime(LIBRESPOT_EVENT_FILE) - position
+            started_at = os.path.getmtime(LIBRESPOT_EVENT_FULLNAME) - position
     except FileNotFoundError:
         pass
     except BaseException as err:

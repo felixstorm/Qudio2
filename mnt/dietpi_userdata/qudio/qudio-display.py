@@ -31,7 +31,7 @@ CLOCK_FONT_PATH = os.path.join(this_dir, "OpenSans-SemiBold.ttf")
 async def main_async():
     logging.basicConfig(format=',%(msecs)03d %(levelname)-5.5s [%(filename)-12.12s:%(lineno)3d] %(message)s',
                         level=os.environ.get('LOGLEVEL', 'INFO').upper())
-    logging.info(f'Starting using path "{qudiolib.LIBRESPOT_EVENT_FILE}"')
+    logging.info(f'Starting using path "{qudiolib.LIBRESPOT_EVENT_FULLNAME}"')
     Path(qudiolib.LIBRESPOT_EVENT_FOLDER).mkdir(parents=True, exist_ok=True)
 
     await PlayerHelper().run_async()
@@ -89,7 +89,7 @@ class PlayerHelper:
                         item = playback_state.item
                         artist = item.artists[0].name if item.artists is not None else ""
                         title = item.name
-                        self.display.update_metadata(artist, title)
+                        self.display.update_metadata(artist, title, playback_state.shuffle_state)
 
                         if spot_is_playing:
                             track_started_at = time.time() - playback_state.progress_ms / 1000
@@ -122,7 +122,7 @@ class PlayerHelper:
             spot_is_playing_last = spot_is_playing
 
             next_frame_delay = 1 - (time.time() - now)
-            if next_frame_delay > 0:
+            if next_frame_delay >= 0:
                 await asyncio.sleep(next_frame_delay)
 
         self.tmp_file_event_handler.end()
@@ -166,13 +166,18 @@ class DisplayHelper:
             self.oled_draw.rectangle((0, 0, 127, 63), fill='black')
             self.current_mode = new_mode
 
-    def update_metadata(self, artist, title):
+    def update_metadata(self, artist, title, shuffle_state):
         if self.current_mode == DisplayHelper.Mode.PLAYER:
-            logging.info(f'update_metadata(): {artist} - {title}')
+            logging.info(f'update_metadata(): {artist} - {title}, shuffle: {shuffle_state}')
             y_offset = 5
             self.clear(line_start=1, line_count=2, y0=y_offset)
             self.text(artist, line=1, y=y_offset)
             self.text(title, line=2, y=y_offset)
+            y_offset = 9
+            if shuffle_state:
+                self.text_ra('S', line=3, y=y_offset)
+            else:
+                self.clear(line_start=3, y0=y_offset, line_count=1, x0=127-6)
 
     def update_position(self, position_secs, track_length):
         if self.current_mode == DisplayHelper.Mode.PLAYER:
@@ -181,7 +186,7 @@ class DisplayHelper:
                 logging.debug(f'update_position(): {position_secs} / {track_length}')
 
                 y_offset = 9
-                self.clear(line_start=3, line_count=1, y0=y_offset)
+                self.clear(line_start=3, line_count=1, y0=y_offset, x1=127-6)
                 pos_text = f'Pos: {time.strftime("%M:%S", time.gmtime(position_secs))} / {time.strftime("%M:%S", time.gmtime(track_length))}'
                 self.text(pos_text, line=3, y=y_offset)
 
@@ -281,7 +286,7 @@ class LibrespotTmpFileEventHandler(FileSystemEventHandler):
         self.observer.join()
 
     def on_modified(self,  event):
-        if event.src_path == qudiolib.LIBRESPOT_EVENT_FILE:
+        if event.src_path == qudiolib.LIBRESPOT_EVENT_FULLNAME:
             self.on_event_func()
 
 
