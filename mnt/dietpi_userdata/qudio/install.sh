@@ -33,19 +33,21 @@ rm -rf /var/tmp/dietpi/logs; ln -s /tmp /var/tmp/dietpi/logs
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=871643
 rm -rf /etc/udev/rules.d/85-regulatory.rules; ln -s /dev/null /etc/udev/rules.d/85-regulatory.rules
 
-if ! grep -q 'dtoverlay=gpio-ir' /boot/config.txt ; then
-  echo -e "\n#-------IR-------\ndtoverlay=gpio-ir,gpio_pin=16" >> /boot/config.txt
-fi
-if ! grep -q 'jbl_onstage_iii' /etc/rc_maps.cfg ; then
-  echo -e "\n*       *                        jbl_onstage_iii.toml" >> /etc/rc_maps.cfg
-fi
-
 
 DEB_PACKAGES="fswebcam zbar-tools libopenjp2-7 ir-keytable" # libopenjp2-7 is for luma.oled
 if ! dpkg -s $DEB_PACKAGES >/dev/null 2>&1; then
     apt install -y $DEB_PACKAGES
 else
     echo "Packages are already installed: ${DEB_PACKAGES}"
+fi
+
+
+# stock JBL infrared remote control support
+if ! grep -q 'dtoverlay=gpio-ir' /boot/config.txt ; then
+  echo -e "\n#-------IR-------\ndtoverlay=gpio-ir,gpio_pin=16" >> /boot/config.txt
+fi
+if ! grep -q 'jbl_onstage_iii' /etc/rc_maps.cfg ; then
+  echo -e "\n*       *                        jbl_onstage_iii.toml" >> /etc/rc_maps.cfg
 fi
 
 

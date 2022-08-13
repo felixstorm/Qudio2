@@ -15,6 +15,11 @@ Since my time is pretty limited, this is meant just to make a personal project p
   - Add an 1.3" OLED display (SH1106 type)
   - ~~Add external USB port for future enhancements (like playing CDs, use USB media etc.)~~ => no software support for it anymore
   - onshape Link of the adapted case: https://cad.onshape.com/documents/0a8bb1d542788dc36d74f979/w/71ac1db00973e66dbf9d59d4/e/7399a80cda5698887abc2b3d?renderMode=0&uiState=617e9dee49988a5627247be8
+  - Instead of using an Apple Dock adapter to feed audio to the JBL and to pull power from it, I decided to solder wires directly to the PCB inside the JBL. I also take 12 volts from the JBL PCB and use a simple step-down buck converter to get 5 volts from it for the Pi Zero. This rules out the adapter as an additional source for power and audio problems and still keeps the JBL main power switch working as before. The player might even work using batteries inside the JBL battery compartment, but I did never tried this out myself.  
+  There seem to exist a few different types of PCB layouts for the JBL On Stage III (P). I came across these two:
+    - Type III with mini USB and audio out connectors: [Overview](.media/JBL_Type_III_Overview.jpg), [my audio connection details](.media/JBL_Type_III_AudioConnection.jpg), [my power connection details](.media/JBL_Type_III_PowerConnection.jpg)
+    - Type IIIP (neither mini USB nor audio out): [Overview](.media/JBL_Type_IIIP_Overview.jpg), [my audio connection details](.media/JBL_Type_IIIP_AudioConnection.jpg), [my power connection details](.media/JBL_Type_IIIP_PowerConnection.jpg)
+  - I also feed the received IR signal from the JBL to the Pi Zero and decode it there to be able to use the stock JBL IR remote control to not only control volume but also play/pause and next/previous track. Unfortunately I am currently unable to find any photo documenting from where exactly on the JBL PCB I took the IR signal. In case I should find a photo I will add it here.
 
 - Software
   - Originally the software had been based on [Volumio](https://volumio.com) and did generally work, but startup time was rather slow and response to commands as well (kids seem to get rather demanding these days ;-) )
@@ -28,7 +33,7 @@ Since my time is pretty limited, this is meant just to make a personal project p
 
 ## Installation
 
-- DietPi (image)
+- DietPi
   - This is all based on DietPi around version 7.7 or 7.8.
   - Get DietPi Raspberry Pi image from https://dietpi.com/
   - Burn image to a USB stick with `rufus` (Windows) or similar
