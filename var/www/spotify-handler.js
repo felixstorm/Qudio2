@@ -216,8 +216,14 @@ var spotifyHandler = {
 						}, 500);
 					}
 					if (pageHandler.shown != "discoverpage") {
+						// select it if only one device is available
+						if (spotifyHandler.dom.discoverList.childNodes.length == 1) {
+							spotifyHandler.dom.discoverList.childNodes[0].click();
+						}
+						else {
 						pageHandler.showPage("discoverpage");
 					}
+				}
 				}
 			});
 		}
@@ -250,6 +256,7 @@ var spotifyHandler = {
 					var tempList = "";
 					var tempListDis = "";
 					for (var i = 0; i < data.devices.length; i++) {
+						var deviceListItemHtml = '<li class="devicelist-item" onclick="spotifyHandler.transferPlayback(\''+data.devices[i].id+'\')"><span class="devicelist-icon material-icons">'+getDeviceIcon(data.devices[i].type.toLowerCase())+'</span><span class="devicelist-name">'+data.devices[i].name+'</span></li>';
 						if (data.devices[i].is_active) {
 							spotifyHandler.dom.listeningOn.innerHTML = stripTags(data.devices[i].name);
 							spotifyHandler.dom.listeningOnIcon.innerHTML = getDeviceIcon(data.devices[i].type.toLowerCase());
@@ -261,9 +268,9 @@ var spotifyHandler = {
 							}
 						}
 						else {
-							tempList += '<li class="devicelist-item" onclick="spotifyHandler.transferPlayback(\''+data.devices[i].id+'\')"><span class="devicelist-icon material-icons">'+getDeviceIcon(data.devices[i].type.toLowerCase())+'</span><span class="devicelist-name">'+data.devices[i].name+'</span></li>';
+							tempList += deviceListItemHtml;
 						}
-						tempListDis += '<li class="devicelist-item" onclick="spotifyHandler.startPlaySession(\''+data.devices[i].id+'\')"><span class="devicelist-icon material-icons">'+getDeviceIcon(data.devices[i].type.toLowerCase())+'</span><span class="devicelist-name">'+data.devices[i].name+'</span></li>';
+						tempListDis += deviceListItemHtml;
 					}
 					spotifyHandler.dom.deviceList.innerHTML = tempList;
 					spotifyHandler.dom.discoverList.innerHTML = tempListDis;
