@@ -221,9 +221,9 @@ var spotifyHandler = {
 							spotifyHandler.dom.discoverList.childNodes[0].click();
 						}
 						else {
-						pageHandler.showPage("discoverpage");
+							pageHandler.showPage("discoverpage");
+						}
 					}
-				}
 				}
 			});
 		}
@@ -436,6 +436,18 @@ var spotifyHandler = {
 		}
 	},
 
+	createArtistItem: function(tempArtist) {
+		console.log(tempArtist);
+		var artistElem = document.createElement("li");
+		var tempArtists = [];
+		artistElem.className = "queue-item";
+		artistElem.setAttribute("data-searchquery", 'artistid:' + tempArtist.id);
+		artistElem.setAttribute("onclick", "spotifyHandler.search(this.getAttribute('data-searchquery'));");
+		artistElem.innerHTML = '<div class="queue-item-cover"><img src="'+(tempArtist.images.length > 0 ? tempArtist.images.pop().url : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7')+'"></div>'+'<div class="queue-item-metadata"><div class="queue-item-name">'+stripTags(tempArtist.name)+'</div></div>';
+		spotifyHandler.dom.queue.appendChild(artistElem);
+		return (artistElem);
+	},
+
 	playContext: function(contextUri, trackUri) {
 		if (trackUri == null) {
 			spotifyHandler.api.play({
@@ -564,34 +576,49 @@ var spotifyHandler = {
 
 	searchReq: null,
 	search: function(q) {
-		if (spotifyHandler.searchReq != null) {
+		if (spotifyHandler.searchReq != null && spotifyHandler.searchReq.abort) {
 			spotifyHandler.searchReq.abort();
 		}
-		if (q.trim() != "")
+		q = q.trim();
+		if (q != "")
 		{
-			spotifyHandler.searchReq = spotifyHandler.api.search(q.trim(), ["track", "album", "playlist"], {offset: 0, limit: 12, market: "from_token"});
+			var types;
+			if (q.startsWith("artistid:")) {
+				q = q.substr("artistid:".length);
+				spotifyHandler.searchReq = spotifyHandler.getArtistAlbumsAll(q);
+			}
+			else {
+				spotifyHandler.searchReq = spotifyHandler.api.search(q, ["artist", "album", "playlist", "track"], {offset: 0, limit: 12, market: "from_token"});
+			}
 			spotifyHandler.searchReq.then(function(data) {
 				console.log("Search results are in", data);
 				spotifyHandler.dom.search.innerHTML = "";
 				var anyResults = false;
-				if (data.tracks.items.length > 0) {
-					spotifyHandler.dom.search.appendChild(spotifyHandler.createDividerItem("Tracks"));
-					for (var i = 0; i < data.tracks.items.length; i++) {
-						spotifyHandler.dom.search.appendChild(spotifyHandler.createTrackItem(data.tracks.items[i], true, false));
+				if (data.artists && data.artists.items.length > 0) {
+					spotifyHandler.dom.search.appendChild(spotifyHandler.createDividerItem("Artists"));
+					for (var i = 0; i < data.artists.items.length; i++) {
+						spotifyHandler.dom.search.appendChild(spotifyHandler.createArtistItem(data.artists.items[i]));
 					}
 					anyResults = true;
 				}
-				if (data.albums.items.length > 0) {
+				if (data.albums && data.albums.items.length > 0) {
 					spotifyHandler.dom.search.appendChild(spotifyHandler.createDividerItem("Albums"));
 					for (var i = 0; i < data.albums.items.length; i++) {
 						spotifyHandler.dom.search.appendChild(spotifyHandler.createPlaylistOrAlbumItem(data.albums.items[i], true));
 					}
 					anyResults = true;
 				}
-				if (data.playlists.items.length > 0) {
+				if (data.playlists && data.playlists.items.length > 0) {
 					spotifyHandler.dom.search.appendChild(spotifyHandler.createDividerItem("Playlists"));
 					for (var i = 0; i < data.playlists.items.length; i++) {
 						spotifyHandler.dom.search.appendChild(spotifyHandler.createPlaylistOrAlbumItem(data.playlists.items[i], true));
+					}
+					anyResults = true;
+				}
+				if (data.tracks && data.tracks.items.length > 0) {
+					spotifyHandler.dom.search.appendChild(spotifyHandler.createDividerItem("Tracks"));
+					for (var i = 0; i < data.tracks.items.length; i++) {
+						spotifyHandler.dom.search.appendChild(spotifyHandler.createTrackItem(data.tracks.items[i], true, false));
 					}
 					anyResults = true;
 				}
@@ -605,6 +632,18 @@ var spotifyHandler = {
 		else {
 			spotifyHandler.dom.search.innerHTML = "";
 		}
+	},
+
+	getArtistAlbumsAll: async function (artistId) {
+		var result = await spotifyHandler.api.getArtistAlbums(artistId, { offset: 0, limit: 50 });
+		if (result.total > result.limit) {
+			console.log("Need more!");
+			for (let i = 1; i < Math.ceil(result.total / result.limit); i++) {
+				(await spotifyHandler.api.getArtistAlbums(artistId, { offset: result.limit * i, limit: result.limit }))
+					.items.forEach((item) => result.items.push(item));
+			}
+		}
+		return Promise.resolve({ albums: result });
 	},
 
 	init: function() {
@@ -814,20 +853,20 @@ var spotifyHandler = {
 		// spotifyRefreshTokenResult gets created dynamically on the server by spotify-refresh-token.php
 		// For now there is no mechanism to refresh it on the client but that's ok for us
 		spotifyHandler.expires = new Date().getTime() + (parseInt(spotifyRefreshTokenResult["expires_in"]) * 1000);
-				setInterval(spotifyHandler.checkAccessToken, 1000);
-				setInterval(spotifyHandler.refreshDevices, 5000);
-				setInterval(spotifyHandler.setCurrentlyPlaying, 1000);
+		setInterval(spotifyHandler.checkAccessToken, 1000);
+		setInterval(spotifyHandler.refreshDevices, 5000);
+		setInterval(spotifyHandler.setCurrentlyPlaying, 1000);
 		setTimeout(function () {
 			setInterval(function () {
-						if (spotifyHandler.lastPlaybackStatus.is_playing) {
-							progressBar.setValue(((spotifyHandler.lastPlaybackStatus.progress_ms + 500) / spotifyHandler.lastPlaybackStatus.item.duration_ms) * 100);
-						}
-					}, 1000);
-				}, 500);
+				if (spotifyHandler.lastPlaybackStatus.is_playing) {
+					progressBar.setValue(((spotifyHandler.lastPlaybackStatus.progress_ms + 500) / spotifyHandler.lastPlaybackStatus.item.duration_ms) * 100);
+				}
+			}, 1000);
+		}, 500);
 		spotifyHandler.api.setAccessToken(spotifyRefreshTokenResult["access_token"]);
-				pageHandler.showPage("playerpage");
-				spotifyHandler.setCurrentlyPlaying();
-				spotifyHandler.refreshDevices();
-				spotifyHandler.loadLibrary();
+		pageHandler.showPage("playerpage");
+		spotifyHandler.setCurrentlyPlaying();
+		spotifyHandler.refreshDevices();
+		spotifyHandler.loadLibrary();
 	}
 };
