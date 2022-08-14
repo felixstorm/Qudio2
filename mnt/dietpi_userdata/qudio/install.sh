@@ -11,7 +11,16 @@ pushd /mnt/dietpi_userdata/qudio >/dev/null
 echo "PWD: ${PWD}"
 
 
-# copying using SSHFS might mess up permissions
+# remove older and/or unnecessary files (just in case)
+if [ -e /etc/systemd/system/qudio-*.service ]; then
+  systemctl stop qudio-control.service qudio-display.service || true
+  rm -f /etc/systemd/system/qudio-control.service /etc/systemd/system/qudio-display.service
+fi
+rm -rf /etc/systemd/system/spotifyd.service.d
+rm -f /var/www/index.nginx-debian.html
+
+
+# fix permissions just in case they're messed up
 chown qudio:root -R .
 chmod u+rw,g+r-w,o+r-w -R .
 chmod u+rw,g+r-w,o+r-w \

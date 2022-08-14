@@ -130,10 +130,14 @@ AUTO_SETUP_GLOBAL_PASSWORD=dietpi
 # - Add as many entries as you wish, one each line.
 # - DietPi will automatically install all pre-reqs (e.g. ALSA/X11 for desktops etc)
 # - E.g. the following (without the leading "#") will install the LXDE desktop automatically on first boot:
+# Midnight Commander
 AUTO_SETUP_INSTALL_SOFTWARE_ID=3
+# Python 3 RPi.GPIO
 AUTO_SETUP_INSTALL_SOFTWARE_ID=69
+# nginx
+AUTO_SETUP_INSTALL_SOFTWARE_ID=85
+# Python 3
 AUTO_SETUP_INSTALL_SOFTWARE_ID=130
-AUTO_SETUP_INSTALL_SOFTWARE_ID=199
 
 #------------------------------------------------------------------------------------------------------
 ##### Misc DietPi program settings #####

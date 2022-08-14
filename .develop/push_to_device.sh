@@ -16,16 +16,11 @@ set -x
 
 ssh $ssh_target 'mount -o remount,rw /'
 
-# remove older files (just in case)
-ssh $ssh_target "\
-[ -e /etc/systemd/system/qudio-*.service ] && systemctl stop qudio-control.service qudio-display.service; \
-rm -f /etc/systemd/system/qudio-control.service /etc/systemd/system/qudio-display.service; \
-rm -rf /etc/systemd/system/spotifyd.service.d" || true
-
 # /boot has already been copied manually before
-rsync_includes=('/etc/***' '/mnt/***' '/opt/***')
+rsync_includes=('/etc/***' '/mnt/***' '/opt/***' '/var/***')
 rsync_excludes=('*/__pycache__/' '*/qudio.ini')
-rsync -avh \
+# -a would mess up permissions and ownership
+rsync -rlt -vh \
     "${rsync_excludes[@]/#/--exclude=}" \
     "${rsync_includes[@]/#/--include=}" \
     --exclude='*' \
@@ -34,7 +29,8 @@ rsync -avh \
 ssh $ssh_target '/mnt/dietpi_userdata/qudio/install.sh'
 
 if [ "$target" != "192.168.0.142" ]; then
-    ssh $ssh_target 'mount -o remount,ro /'
+    # remount both / and /boot to completely cleanup
+    ssh $ssh_target 'mount -o remount,ro / ; mount -o remount,ro /boot'
 fi
 
 if echo $* | grep -E --invert-match "(^|\s)(-n|--no-restart)($|\s)" -q; then
