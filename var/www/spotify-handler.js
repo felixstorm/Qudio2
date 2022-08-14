@@ -10,10 +10,6 @@ var spotifyHandler = {
 	lastQueueId: "null2",
 	lastPlaybackStatus: {},
 
-	signIn: function() {
-		window.location.href = "https://accounts.spotify.com/authorize?client_id=44219fb334174bc6b2c634d8f9e4f6eb&response_type=token&redirect_uri="+encodeURIComponent(window.location.origin + window.location.pathname)+"&scope="+spotifyHandler.scopes.join("%20")+"&show_dialog=false&state="+state;
-	},
-
 	checkAccessToken: function() {
 		if ((new Date().getTime() + 25000) >= spotifyHandler.expires) {
 			console.warn("Spotify Access Token has expired! Refreshing page to refresh the access token...");
@@ -605,8 +601,6 @@ var spotifyHandler = {
 	},
 
 	init: function() {
-		document.getElementById("signinbtn").addEventListener("click", spotifyHandler.signIn);
-
 		spotifyHandler.dom.playerPage = document.getElementById("playerpage");
 		spotifyHandler.dom.playingFrom = document.getElementById("playing-from");
 		spotifyHandler.dom.playingFromName = document.getElementById("playing-from-name");
@@ -810,59 +804,23 @@ var spotifyHandler = {
 			navigator.mediaSession.playbackState = "none";
 		}
 
-		if (window.location.hash.length > 0)
-		{
-			var hash = {};
-			var tempHash = window.location.hash.substring(1).split("&");
-			window.location.hash = "";
-			for (var i = 0; i < tempHash.length; i++) {
-				hash[tempHash[i].split("=")[0]] = tempHash[i].split("=")[1];
-			}
-			if ("access_token" in hash && parseInt(hash["state"]) == state) {
-				if (getCookie("spat") != hash["access_token"]) {
-					setCookie("spat", hash["access_token"]);
-					spotifyHandler.expires = new Date().getTime() + (parseInt(hash["expires_in"]) * 1000);
-					setCookie("spex", spotifyHandler.expires);
-				}
-				else {
-					spotifyHandler.expires = parseInt(getCookie("spex"));
-				}
+		// spotifyRefreshTokenResult gets created dynamically on the server by spotify-refresh-token.php
+		// For now there is no mechanism to refresh it on the client but that's ok for us
+		spotifyHandler.expires = new Date().getTime() + (parseInt(spotifyRefreshTokenResult["expires_in"]) * 1000);
 				setInterval(spotifyHandler.checkAccessToken, 1000);
 				setInterval(spotifyHandler.refreshDevices, 5000);
 				setInterval(spotifyHandler.setCurrentlyPlaying, 1000);
-				setTimeout(function() {
-					setInterval(function() {
+		setTimeout(function () {
+			setInterval(function () {
 						if (spotifyHandler.lastPlaybackStatus.is_playing) {
 							progressBar.setValue(((spotifyHandler.lastPlaybackStatus.progress_ms + 500) / spotifyHandler.lastPlaybackStatus.item.duration_ms) * 100);
 						}
 					}, 1000);
 				}, 500);
-				spotifyHandler.api.setAccessToken(hash["access_token"]);
+		spotifyHandler.api.setAccessToken(spotifyRefreshTokenResult["access_token"]);
 				pageHandler.showPage("playerpage");
 				spotifyHandler.setCurrentlyPlaying();
 				spotifyHandler.refreshDevices();
 				spotifyHandler.loadLibrary();
-			}
-			else if ("error" in hash && parseInt(hash["state"]) == state) {
-				if (hash["error"] == "access_denied") {
-
-				}
-				else {
-					alert("An error occurred connecting to your Spotify account: " + hash["error"]);
-				}
-				pageHandler.showPage("signinpage");
-			}
-			else {
-				alert("Something went wrong connecting your Spotify account. Please try again.");
-				pageHandler.showPage("signinpage");
-			}
-		}
-		else if (getCookie("spat") != null) {
-			console.log("No hash present, but we might be able to sign in automatically, since a previous access token was found.");
-			spotifyHandler.signIn();
-		}
-		else {
-			pageHandler.showPage('signinpage');
-		}
 	}
 };
