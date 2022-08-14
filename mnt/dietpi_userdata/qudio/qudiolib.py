@@ -18,6 +18,15 @@ LIBRESPOT_EVENT_FOLDER = "/tmp/librespot"
 LIBRESPOT_EVENT_FULLNAME = os.path.join(LIBRESPOT_EVENT_FOLDER, "event")
 
 
+def spot_create_refresh_token():
+    # Helper to create refresh token from Spotify API
+    # MUST BE RUN LOCALLY AND INTERACTIVELY ON A DEVELOPER MACHINE AS IT WILL OPEN A WEB BROWSER!!!
+    # QUDIO_INI=.develop/qudio_xxx.ini python3 -c 'import mnt.dietpi_userdata.qudio.qudiolib as qudiolib; qudiolib.spot_create_refresh_token()'
+    tk_conf = [c.strip('"') for c in tk.config_from_file(QUDIO_INI_FILE, "tekore", return_refresh=True)]
+    token = tk.prompt_for_user_token(*tk_conf[:3], scope=tk.scope.every)
+    print(f"Received the following refresh token from Spotify: {token.refresh_token}")
+
+
 def spot_get_spotify():
     # connect to Spotify Web API
     tk_conf = [c.strip('"') for c in tk.config_from_file(QUDIO_INI_FILE, "tekore", return_refresh=True)]
