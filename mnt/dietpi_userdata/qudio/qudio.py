@@ -46,6 +46,7 @@ async def run_forever(coroutine_getter):
             break
         except BaseException as err:
             logging.exception(err)
+            await asyncio.sleep(5)
 
 
 asyncio.run(main_async())

@@ -18,7 +18,7 @@ ssh $ssh_target 'mount -o remount,rw /'
 
 # /boot has already been copied manually before
 rsync_includes=('/etc/***' '/mnt/***' '/opt/***' '/var/***')
-rsync_excludes=('*/__pycache__/' '*/qudio.ini')
+rsync_excludes=('*/__pycache__/')
 # -a would mess up permissions and ownership
 rsync -rlt -vh \
     "${rsync_excludes[@]/#/--exclude=}" \
