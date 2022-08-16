@@ -49,12 +49,12 @@ Since my time is pretty limited, this is meant primarily to make a personal proj
 - DietPi (based on v8.7)
   - Get DietPi Raspberry Pi image from https://dietpi.com/ (ARMv6 32-bit image for Pi Zero)
   - Burn image to an SD card with `dd` (Linux), `rufus` (Windows) or similar
-  - Before first start, copy `/boot` directory here to SD card and adjust:
-    - in `dietpi.txt`
+  - Before first start, copy the `/boot` directory from this repo to the first partition of the SD card (overwriting existing files) and
+    - adjust in `dietpi.txt`:
       - Hostname (`AUTO_SETUP_NET_HOSTNAME`)
       - Authorized SSH key (`AUTO_SETUP_SSH_PUBKEY`)
       - potentially also lines containing `QTEST`
-    - and copy `dietpi-wifi.txt.sample` to `dietpi-wifi.txt` and add your WiFi credentials
+    - rename `dietpi-wifi.txt.sample` to `dietpi-wifi.txt` and add your WiFi credentials
 
 - Wait for DietPi First Run Setup to complete
   - This takes quite some time, on my Pi Zero it takes more than 1 hour.
@@ -65,22 +65,9 @@ Since my time is pretty limited, this is meant primarily to make a personal proj
     # if unsure, use htop to check what is really happening
     htop
     ```
+  - Also check `/var/tmp/dietpi/logs/dietpi-automation_custom_script.log` for any errors.
 
-- Manual Steps
-  ```sh
-  # openssh-sftp-server allows to use sftp: / SSHFS even with Dropbear, rsync to copy files
-  apt install -y openssh-sftp-server rsync
-  ```
-
-- Run `dietpi-config` to adjust settings:
-  - Display
-    - RPi Camera: on (GPU Mem will be set automatically)
-    - Rpi Camera LED: off
-  - Advanced:
-    - I2C: on, 400 kHz
-  - No need to reboot - it will come later anyway.
-
-- Copy additional files
+- Copy Qudio files
   - Only works from Linux. If you are on Windows, try using WSL2 instead, but make sure to also `git clone` from within WSL2 to ensure correct executable flags on the files.
   - Create the file `mnt/dietpi_userdata/qudio/qudio.ini` from `qudio.ini.sample`. This is where you get the required values from:
     - `SPOTIFY_USERNAME`, `SPOTIFY_PASSWORD`: The username and password of the Spotify account to be used for playing music.
