@@ -21,6 +21,10 @@ if [ -e /etc/systemd/system/spotifyd.service ]; then
   rm -f /etc/systemd/system/spotifyd.service
   rm -rf /etc/systemd/system/spotifyd.service.d
 fi
+if [ -e /etc/systemd/system/librespot.service ]; then
+  systemctl stop librespot.service
+  rm -f /etc/systemd/system/librespot.service
+fi
 rm -f /var/www/index.nginx-debian.html
 
 
@@ -36,7 +40,7 @@ chmod u+rw,g+r-w,o+r-w -R .
 chmod u+rw,g+r-w,o+r-w \
     /etc/asound.conf \
     /etc/rc_keymaps/jbl_onstage_iii.toml \
-    /etc/systemd/system/qudio.service /etc/systemd/system/librespot.service
+    /etc/systemd/system/qudio.service /etc/systemd/system/librespot-java.service
 
 # fix audio on Raspberry Pi 3 QA system only
 if [[ $(aplay -L) =~ "bcm2835" ]]; then
@@ -80,7 +84,7 @@ $(dirname $BASH_SOURCE)/python_compileall.sh
 
 # refresh services
 systemctl daemon-reload
-systemctl enable librespot.service qudio.service
+systemctl enable librespot-java.service qudio.service
 
 
 popd >/dev/null

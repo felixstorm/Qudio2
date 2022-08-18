@@ -1,0 +1,89 @@
+###
+### All settings are required to exist, otherwise the config file will be overwritten adding the missing entries
+###
+
+deviceName = "librespot-java" # Qudio sets this using a command line argument
+deviceType = "SPEAKER"        # COMPUTER, TABLET, SMARTPHONE, SPEAKER, TV, AVR, STB, AUDIO_DONGLE, GAME_CONSOLE, CAST_VIDEO, CAST_AUDIO, AUTOMOBILE, WEARABLE, UNKNOWN_SPOTIFY, CAR_THING, UNKNOWN
+deviceId = ""                 # 40 chars, leave empty for random
+logLevel = "TRACE"            # OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE, ALL
+preferredLocale = "en"
+
+[cache]
+	enabled = true
+	dir = "/tmp/librespot-java-cache/"
+	doCleanUp = true
+
+[auth]
+	strategy = "USER_PASS"   # USER_PASS, ZEROCONF, BLOB, FACEBOOK, STORED
+	username = ""            # Qudio sets this using a command line argument
+	password = ""            # Qudio sets this using a command line argument
+	blob = ""                # Spotify authentication blob Base64-encoded (BLOB only)
+	storeCredentials = false # Whether to store reusable credentials on disk (not a plain password)
+	credentialsFile = "credentials.json"
+
+[preload]
+	enabled = true
+
+[network]
+	connectionTimeout = 10 # If ping isn't received within this amount of seconds, reconnect
+
+[proxy]
+	enabled = false
+	type = "HTTP" # HTTP, SOCKS
+	ssl = false
+	address = ""
+	port = 0
+	auth = false
+	username = ""
+	password = ""
+
+[zeroconf]
+	listenAll = true
+	interfaces = ""
+	listenPort = -1
+
+[shell]
+	enabled = false
+	executeWithBash = false # Execute the command with `bash -c`
+	onConnectionDropped = ""
+	onConnectionEstablished = ""
+	onContextChanged = ""
+	onFinishedLoading = ""
+	onInactiveSession = ""
+	onMetadataAvailable = ""
+	onPanicState = ""
+	onPlaybackEnded = ""
+	onPlaybackPaused = ""
+	onPlaybackResumed = ""
+	onStartedLoading = ""
+	onTrackChanged = ""
+	onTrackSeeked = ""
+	onVolumeChanged = ""
+
+### Time correction ###
+[time]
+	synchronizationMethod = "NTP" # NTP, PING, MELODY, MANUAL
+	manualCorrection = 0          # Manual time correction in millis
+
+[api]
+	port = 24879
+	host = "127.0.0.1" # limit to localhost only for now
+
+[player]
+	initialVolume = 32767            # (0-65536)
+	enableNormalisation = true
+	normalisationPregain = 3.0       # loud at +6, normal at +3, quiet at -5
+	preferredAudioQuality = "NORMAL" # NORMAL, HIGH, VERY_HIGH
+	autoplayEnabled = false          # Autoplay similar songs when your music ends
+	crossfadeDuration = 0            # Crossfade overlap time (in milliseconds)
+	volumeSteps = 64                 # Number of volume notches
+	retryOnChunkError = true         # Whether the player should retry fetching a chuck if it fails
+	output = "MIXER"                 # Audio output device (MIXER, PIPE, STDOUT, CUSTOM)
+	outputClass = ""                 # Audio output Java class name
+	mixerSearchKeywords = ""         # Mixer/backend search keywords (semicolon separated)
+	logAvailableMixers = false
+	pipe = ""                        # Output raw (signed) PCM to this file (`player.output` must be PIPE)
+	bypassSinkVolume = false         # Whether librespot-java should ignore volume events, sink volume is set to the max
+	releaseLineDelay = 20            # Release mixer line after set delay (in seconds)
+	localFilesPath = ""              # Where librespot-java should search for local files
+	metadataPipe = ""                # Output metadata in Shairport Sync format (https://github.com/mikebrady/shairport-sync-metadata-reader)

@@ -5,11 +5,10 @@ from datetime import datetime
 from enum import Enum
 import logging
 import os
-from pathlib import Path
 import socket
 import time
 
-import qudiolib
+import qudiolib_librespot_java as qudiolib
 
 if qudiolib.IS_RPI:
     from luma.core.interface.serial import i2c
@@ -18,102 +17,51 @@ else:
     from luma.emulator.device import pygame
 from PIL import Image, ImageDraw, ImageFont
 
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-
 
 this_dir = os.path.dirname(__file__)
 # TBD DEFAULT_FONT_PATH = os.path.join(this_dir, "OpenSans-Regular.ttf")
 CLOCK_FONT_PATH = os.path.join(this_dir, "OpenSans-SemiBold.ttf")
 
 
-async def main_async(tk_spotify, tk_player_args):
+async def main_async():
     logging.info(f'Starting')
 
-    display_player_info_at = 0
-
-    spot_is_playing_last = False
-    spot_is_playing_last_time = 0
+    is_playing_last_time = 0
     update_metadata_last_time = 0
 
-    track_started_at = -1
-    track_position = -1
-    track_length = -1
-
     display = DisplayHelper()
-
-    def update_player_display():
-        nonlocal display_player_info_at
-        logging.debug(f'display_player_info: display_player_info_at = {display_player_info_at}')
-        display_player_info_at = time.time() + 0.5
-    tmp_file_event_handler = LibrespotTmpFileEventHandler()
-    tmp_file_event_handler.begin(update_player_display)
 
     try:
         while True:
             now = time.time()
 
-            spot_is_playing, local_position, local_duration, local_started_at = qudiolib.spot_get_local_status()
-            if spot_is_playing:
-                spot_is_playing_last_time = now
-            player_is_alive = spot_is_playing_last_time + 30 > now
-
-            logging.debug(
-                f'spot_is_playing: {spot_is_playing} (was: {spot_is_playing_last}), spot_is_playing_last_time: {spot_is_playing_last_time} (now: {now}), player_is_alive: {player_is_alive}')
+            spot_state = qudiolib.state
+            if spot_state.is_playing:
+                is_playing_last_time = now
+            player_is_alive = is_playing_last_time + 30 > now
+            logging.debug(f'is_playing: {spot_state.is_playing}, is_playing_last_time: {is_playing_last_time} (now: {now}), player_is_alive: {player_is_alive}')
 
             display.set_mode(DisplayHelper.Mode.PLAYER if player_is_alive else DisplayHelper.Mode.STANDBY)
 
             if player_is_alive:
 
-                update_metadata = (display_player_info_at > 0 and now >= display_player_info_at) or \
-                    now > update_metadata_last_time + 10
-                logging.debug(
-                    f'update_metadata: {update_metadata}, display_player_info_at: {display_player_info_at}, update_metadata_last_time: {update_metadata_last_time} (now: {now})')
+                update_metadata = spot_state.metadata_updated_at and spot_state.metadata_updated_at > update_metadata_last_time
+                logging.debug(f'update_metadata: {update_metadata}, update_metadata_last_time: {update_metadata_last_time} (now: {now})')
                 if update_metadata:
+                    update_metadata_last_time = spot_state.metadata_updated_at
+                    display.update_metadata(spot_state.artist, spot_state.title, False) # TBD shuffle state
 
-                    playback_state = await qudiolib.spot_get_playback_state_async(tk_spotify, tk_player_args["device_id"])
-                    if playback_state is not None and playback_state.item is not None:
-                        item = playback_state.item
-                        artist = item.artists[0].name if item.artists is not None else ""
-                        title = item.name
-                        display.update_metadata(artist, title, playback_state.shuffle_state)
-
-                        if spot_is_playing:
-                            track_started_at = time.time() - playback_state.progress_ms / 1000
-                            track_position = -1
-                        else:
-                            track_started_at = -1
-                            track_position = playback_state.progress_ms / 1000
-                        track_length = item.duration_ms / 1000
-
-                    else:
-                        track_started_at = -1
-                        track_position = -1
-                        track_length = -1
-
-                    display_player_info_at = 0  # just in case this was our trigger
-                    update_metadata_last_time = now
-
-                if spot_is_playing and local_started_at is not None:
-                    track_started_at = local_started_at
-                    track_position = -1
-                if local_duration is not None:
-                    track_length = local_duration
-
-                if track_started_at >= 0 or track_position >= 0:
-                    position_secs = track_position if track_position >= 0 else time.time() - track_started_at
-                    display.update_position(position_secs, track_length)
+                if spot_state.track_started_at is not None:
+                    position_secs = time.time() - spot_state.track_started_at if spot_state.is_playing else spot_state.position
+                    display.update_position(position_secs, spot_state.duration or -1)
 
             display.update_other()
-
-            spot_is_playing_last = spot_is_playing
 
             next_frame_delay = 1 - (time.time() - now)
             if next_frame_delay >= 0:
                 await asyncio.sleep(next_frame_delay)
 
     finally:
-        tmp_file_event_handler.end()
         logging.info('Exiting')
 
 
@@ -253,21 +201,3 @@ class DisplayHelper:
         finally:
             st.close()
         return IP
-
-
-class LibrespotTmpFileEventHandler(FileSystemEventHandler):
-
-    def begin(self, on_event_func):
-        Path(qudiolib.LIBRESPOT_EVENT_FOLDER).mkdir(parents=True, exist_ok=True)
-        self.on_event_func = on_event_func
-        self.observer = Observer()
-        self.observer.schedule(self, path=qudiolib.LIBRESPOT_EVENT_FOLDER, recursive=False)
-        self.observer.start()
-
-    def end(self):
-        self.observer.stop()
-        self.observer.join()
-
-    def on_modified(self,  event):
-        if event.src_path == qudiolib.LIBRESPOT_EVENT_FULLNAME:
-            self.on_event_func()

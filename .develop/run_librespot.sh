@@ -1,17 +1,20 @@
 #!/bin/bash
 set -euxo pipefail
 
-pushd $(dirname $BASH_SOURCE)
+DEVICE_ROOT="$(realpath $(dirname $BASH_SOURCE)/..)"
 
-SPOTIFY_DEVICE_NAME=$(awk -F "=" '/SPOTIFY_DEVICE_NAME/ {print $2}' qudio_testdev.ini)
-SPOTIFY_USERNAME=$(awk -F "=" '/SPOTIFY_USERNAME/ {print $2}' qudio_testdev.ini)
-SPOTIFY_PASSWORD=$(awk -F "=" '/SPOTIFY_PASSWORD/ {print $2}' qudio_testdev.ini)
+QUDIO_INI="$(dirname $BASH_SOURCE)/qudio_testdev.ini"
+SPOTIFY_DEVICE_NAME="$(awk -F "=" '/SPOTIFY_DEVICE_NAME/ {print $2}' $QUDIO_INI)"
+SPOTIFY_USERNAME="$(awk -F "=" '/SPOTIFY_USERNAME/ {print $2}' $QUDIO_INI)"
+SPOTIFY_PASSWORD="$(awk -F "=" '/SPOTIFY_PASSWORD/ {print $2}' $QUDIO_INI)"
 
-./librespot_x86-64 \
-    --name ${SPOTIFY_DEVICE_NAME} \
-    --username ${SPOTIFY_USERNAME} \
-    --password ${SPOTIFY_PASSWORD} \
-    --onevent $PWD/../mnt/dietpi_userdata/qudio/librespot_hook.sh \
-    --initial-volume 30
+pushd "$DEVICE_ROOT/mnt/dietpi_userdata/qudio"
+
+java -jar $DEVICE_ROOT/opt/librespot-java/librespot-api-1.6.2.jar \
+    --conf-file=$DEVICE_ROOT/etc/opt/librespot-java.toml \
+    --deviceName=${SPOTIFY_DEVICE_NAME} \
+    --auth.username=${SPOTIFY_USERNAME} \
+    --auth.password=${SPOTIFY_PASSWORD} \
+    --player.initialVolume=20000
 
 popd
