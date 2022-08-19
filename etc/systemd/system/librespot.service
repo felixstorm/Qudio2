@@ -17,6 +17,7 @@ EnvironmentFile=/mnt/dietpi_userdata/qudio/qudio.ini
 # backend, mixer, alsa-mixer-control and alsa-mixer-device are required for our asound.conf
 # bitrate 96 kbps is enough, dithering is not required and takes a few more CPU cycles
 # enable-volume-normalisation sounds helpful and does not seem to take CPU cycles
+# normalisation-method basic is required as with dynamic (the default) it starts to stutter quite often
 ExecStart=/opt/librespot/librespot \
     --name ${SPOTIFY_DEVICE_NAME} \
     --username ${SPOTIFY_USERNAME} \
@@ -28,6 +29,7 @@ ExecStart=/opt/librespot/librespot \
     --bitrate 96 \
     --dither none \
     --enable-volume-normalisation \
+    --normalisation-method basic \
     --cache /tmp/librespot-cache \
     --onevent /mnt/dietpi_userdata/qudio/librespot_hook.sh \
     --initial-volume 50
