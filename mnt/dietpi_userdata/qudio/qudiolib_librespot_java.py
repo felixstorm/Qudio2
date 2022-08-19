@@ -13,7 +13,7 @@ IS_RPI = os.path.isdir("/boot/dietpi")
 LIBRESPOT_JAVA_API_ADDRESS = 'localhost:24879'
 
 
-librespot_is_alive_event = asyncio.Event()
+librespot_is_alive_event = None
 
 state = SimpleNamespace()
 state.is_playing = None
@@ -24,6 +24,12 @@ state.artist = None
 state.title = None
 state.metadata_updated_at = None
 state.shuffle = False
+
+
+async def init_async():
+    # need to initialize it here for it to get attached to the correct loop
+    global librespot_is_alive_event
+    librespot_is_alive_event = asyncio.Event()
 
 
 async def main_async():
@@ -91,8 +97,10 @@ async def main_async():
                                 __update_metadata(message.get('track', None))
                             elif event == 'playbackHaltStateChanged':
                                 state.is_playing = not message['halted']
+                            elif event == 'trackSeeked':
+                                pass # need trackTime from message
                             elif event in ['contextChanged', 'volumeChanged', 'sessionChanged', 'sessionCleared', 'connectionEstablished', 'connectionDropped']:
-                                continue # irrelevant for now
+                                continue # irrelevant for now, skip
                             else:
                                 logging.warning(f'Unknown message: {websocket_message.data}')
 
@@ -149,24 +157,28 @@ async def player_update_shuffle_state():
             state.shuffle = False
 
 
+async def __player_control(url, params=None):
+    logging.info(f'Sending control command to player: {url}, params: {params}')
+    await http_client_session.post(url, params=params)
+
 async def player_start_context(context):
-    await http_client_session.post('/player/load', params={'uri': context, 'play': 'true'})
+    await __player_control('/player/load', params={'uri': context, 'play': 'true'})
 
 async def player_play_pause():
-    await http_client_session.post('/player/play-pause')
+    await __player_control('/player/play-pause')
 
 async def player_previous():
-    await http_client_session.post('/player/prev')
+    await __player_control('/player/prev')
 
 async def player_next():
-    await http_client_session.post('/player/next')
+    await __player_control('/player/next')
 
 async def player_seek_delta(delta_secs):
     current_position_secs = get_current_position_secs()
     if current_position_secs is not None:
         new_position_ms = (current_position_secs + delta_secs) * 1000
-        await http_client_session.post('/player/load', params={'pos': int(new_position_ms)})
-
+        logging.debug(f'current_position_secs: {current_position_secs}, delta_secs: {delta_secs}, new_position_ms: {new_position_ms}')
+        await __player_control('/player/seek', params={'pos': int(new_position_ms)})
 
 async def player_shuffle_toggle():
     await player_update_shuffle_state()
@@ -175,3 +187,10 @@ async def player_shuffle_toggle():
     # params do not support boolean values, need empty body for librespot-java to process it
     await http_client_session.put('/web-api/v1/me/player/shuffle', params={'state': json.dumps(new_state)}, json={})
     state.shuffle = new_state
+
+
+
+# TBDs
+#
+# - No event after "prev" when going back to beginning of track
+# - No event to get shuffle state from (not even librespot API command)

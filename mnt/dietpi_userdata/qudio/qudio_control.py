@@ -58,7 +58,7 @@ async def main_async():
             button_long_press_commands = {
                 PIN_PREV: lambda down_secs: qudiolib.player_seek_delta(delta_secs=-5 * down_secs),
                 PIN_PLAY: lambda down_secs: qudiolib.player_shuffle_toggle() if down_secs < 1.4 else None,
-                PIN_NEXT: lambda down_secs: qudiolib.player_seek_delta(delta_secs=-5 * down_secs),
+                PIN_NEXT: lambda down_secs: qudiolib.player_seek_delta(delta_secs=5 * down_secs),
             }
             for pin in (PIN_PLAY, PIN_PREV, PIN_NEXT):
                 GpioInputAsync(pin, button_short_press_commands=button_short_press_commands,

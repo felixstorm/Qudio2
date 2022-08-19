@@ -18,6 +18,8 @@ async def main_async():
                         level=os.environ.get('LOGLEVEL', 'INFO').upper())
     logging.info(f'Starting')
 
+    await qudiolib.init_async()
+
     tasks = []
     def signal_handler(signum, frame):
         logging.info(f'Received signal {signum}')

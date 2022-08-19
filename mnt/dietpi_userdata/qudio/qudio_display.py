@@ -117,10 +117,12 @@ class DisplayHelper:
 
                 y_offset = 9
                 self.clear(line_start=3, line_count=1, y0=y_offset, x1=127-6)
-                pos_text = f'Pos: {time.strftime("%M:%S", time.gmtime(position_secs))} / {time.strftime("%M:%S", time.gmtime(track_length))}'
+                pos_text = f'Pos: {time.strftime("%M:%S", time.gmtime(position_secs))}'
+                if track_length >= 0:
+                    pos_text += f' / {time.strftime("%M:%S", time.gmtime(track_length))}'
                 self.text(pos_text, line=3, y=y_offset)
 
-                if track_length > 0:
+                if track_length >= 0:
                     rect_x1 = position_secs / track_length * 127
                     update_only = not self.needs_redraw and position_secs > self.position_secs_last
                     logging.debug(
@@ -128,8 +130,14 @@ class DisplayHelper:
                     if update_only:
                         rect_x0 = self.position_secs_last / self.track_length_last
                     else:
-                        self.rect(line_start=4, line_count=1, y0=y_offset, fill='black', outline='white')
                         rect_x0 = 0
+                else:
+                    update_only = False
+
+                if not update_only:
+                    self.rect(line_start=4, line_count=1, y0=y_offset, fill='black', outline='white')
+
+                if track_length >= 0:
                     self.rect(x0=rect_x0, x1=rect_x1, line_start=4, line_count=1, y0=y_offset)
 
                 self.position_secs_last = position_secs
