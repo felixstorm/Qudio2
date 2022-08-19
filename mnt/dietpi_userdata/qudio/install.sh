@@ -26,6 +26,7 @@ if [ -e /etc/systemd/system/librespot.service ]; then
   rm -f /etc/systemd/system/librespot.service
 fi
 rm -f /var/www/index.nginx-debian.html
+rm -f /mnt/dietpi_userdata/qudio/qudiolib.py
 
 
 # librespot needs a user (with shell for the hook)
@@ -72,7 +73,7 @@ fi
 
 
 # Python packages and compileall
-PIP_PACKAGES="tekore luma.oled watchdog evdev"
+PIP_PACKAGES="aiohttp cchardet luma.oled evdev"
 if [[ $(pip3 show $PIP_PACKAGES 3>&1 2>&3 1>/dev/null) != "" ]]; then
   pip3 install $PIP_PACKAGES
 else

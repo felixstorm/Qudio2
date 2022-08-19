@@ -20,26 +20,6 @@ ExecStart=java -jar /opt/librespot-java/librespot-api-1.6.2.jar \
     --auth.username=${SPOTIFY_USERNAME} \
     --auth.password=${SPOTIFY_PASSWORD}
 
-
-# TBD: add to librespot-java.toml and remove here
-# # backend, mixer, alsa-mixer-control and alsa-mixer-device are required for our asound.conf
-# # bitrate 96 kbps is enough, dithering is not required and takes a few more CPU cycles
-# # enable-volume-normalisation sounds helpful and does not seem to take CPU cycles
-# ExecStart=/opt/librespot/librespot \
-#     --name ${SPOTIFY_DEVICE_NAME} \
-#     --username ${SPOTIFY_USERNAME} \
-#     --password ${SPOTIFY_PASSWORD} \
-#     --backend alsa \
-#     --mixer alsa \  
-#     --alsa-mixer-control PCM \
-#     --alsa-mixer-device default \
-#     --bitrate 96 \
-#     --dither none \
-#     --enable-volume-normalisation \
-#     --cache /tmp/librespot-cache \
-#     --onevent /mnt/dietpi_userdata/qudio/librespot_hook.sh \
-#     --initial-volume 50
-
 Restart=always
 RestartSec=3
 

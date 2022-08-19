@@ -11,7 +11,7 @@ import subprocess
 import threading
 import time
 
-import qudiolib
+import qudiolib_librespot_java as qudiolib
 
 import evdev
 
@@ -35,13 +35,9 @@ PIN_SENSOR, PIN_LED = 5, 22
 PIN_PREV, PIN_PLAY, PIN_NEXT = 10, 9, 11
 
 
-async def main_async(tk_spotify_arg, tk_player_args_arg):
+async def main_async():
 
     logging.info(f'Starting')
-
-    global tk_spotify, tk_player_args
-    tk_spotify = tk_spotify_arg
-    tk_player_args = tk_player_args_arg
 
     try:
         if qudiolib.IS_RPI:
@@ -55,14 +51,14 @@ async def main_async(tk_spotify_arg, tk_player_args_arg):
 
             logging.info('Attach button GPIOs')
             button_short_press_commands = {
-                PIN_PREV: lambda: spotify_command_async('previous'),
-                PIN_PLAY: lambda: spotify_command_async('play_pause'),
-                PIN_NEXT: lambda: spotify_command_async('next'),
+                PIN_PREV: qudiolib.player_previous,
+                PIN_PLAY: qudiolib.player_play_pause,
+                PIN_NEXT: qudiolib.player_next,
             }
             button_long_press_commands = {
-                PIN_PREV: lambda down_secs: spotify_command_async('seek_delta', seconds=-5 * down_secs),
-                PIN_PLAY: lambda down_secs: spotify_command_async('shuffle') if down_secs < 1.4 else None,
-                PIN_NEXT: lambda down_secs: spotify_command_async('seek_delta', seconds=5 * down_secs),
+                PIN_PREV: lambda down_secs: qudiolib.player_seek_delta(delta_secs=-5 * down_secs),
+                PIN_PLAY: lambda down_secs: qudiolib.player_shuffle_toggle() if down_secs < 1.4 else None,
+                PIN_NEXT: lambda down_secs: qudiolib.player_seek_delta(delta_secs=-5 * down_secs),
             }
             for pin in (PIN_PLAY, PIN_PREV, PIN_NEXT):
                 GpioInputAsync(pin, button_short_press_commands=button_short_press_commands,
@@ -77,22 +73,23 @@ async def main_async(tk_spotify_arg, tk_player_args_arg):
             ir_remote = evdev.InputDevice('/dev/input/by-path/platform-i8042-serio-0-event-kbd')
         logging.info("IR remote: %s", ir_remote)
 
-        if not qudiolib.spot_get_is_playing():
+        await qudiolib.librespot_is_alive_event.wait()
+        if not qudiolib.state.is_playing:
             await play_sound_start_async(SOUND_STARTUP)
 
         logging.info('Started')
 
         if ir_remote:
             ir_commands = {
-                'KEY_CHANNELUP':   lambda: spotify_command_async('previous'),
-                'KEY_PLAY':        lambda: spotify_command_async('play_pause'),
-                'KEY_CHANNELDOWN': lambda: spotify_command_async('next'),
-                'KEY_MENU':        lambda: spotify_command_async('shuffle'),
+                'KEY_CHANNELUP':   qudiolib.player_previous,
+                'KEY_PLAY':        qudiolib.player_play_pause,
+                'KEY_CHANNELDOWN': qudiolib.player_next,
+                'KEY_MENU':        qudiolib.player_shuffle_toggle,
                 # development only
-                'KEY_LEFT':  lambda: spotify_command_async('previous'),
-                'KEY_SPACE': lambda: spotify_command_async('play_pause'),
-                'KEY_RIGHT': lambda: spotify_command_async('next'),
-                'KEY_S':     lambda: spotify_command_async('shuffle'),
+                'KEY_LEFT':  qudiolib.player_previous,
+                'KEY_SPACE': qudiolib.player_play_pause,
+                'KEY_RIGHT': qudiolib.player_next,
+                'KEY_S':     qudiolib.player_shuffle_toggle,
             }
             async for ir_event in ir_remote.async_read_loop():
                 ir_event = evdev.categorize(ir_event)
@@ -188,48 +185,6 @@ async def play_sound_start_async(wavFile):
     return await asyncio.create_subprocess_exec('aplay', '-q', wavFile)
 
 
-async def spotify_command_async(command, context=None, seconds=None):
-    logging.info(f"Sending command '{command}' (context='{context}', seconds={seconds}) to Spotify")
-
-    if command in ['seek_delta', 'shuffle']:
-        playback_state = await qudiolib.spot_get_playback_state_async(tk_spotify, tk_player_args["device_id"])
-        if not playback_state:
-            return
-
-    if command == 'start_context':
-        await tk_spotify.playback_start_context(context, **tk_player_args)
-
-    elif command == 'play_pause':
-        if qudiolib.spot_get_is_playing():
-            await tk_spotify.playback_pause(**tk_player_args)
-        else:
-            await tk_spotify.playback_resume(**tk_player_args)
-
-    elif command == 'previous':
-        await tk_spotify.playback_previous(**tk_player_args)
-
-    elif command == 'next':
-        await tk_spotify.playback_next(**tk_player_args)
-
-    elif command == 'seek_delta':
-        seek_pos_ms = round(playback_state.progress_ms + seconds * 1000)
-        if seek_pos_ms < 0:
-            await tk_spotify.playback_previous(**tk_player_args)
-        elif playback_state.item and playback_state.item.duration_ms and seek_pos_ms > playback_state.item.duration_ms:
-            await tk_spotify.playback_next(**tk_player_args)
-        else:
-            await tk_spotify.playback_seek(seek_pos_ms, **tk_player_args)
-
-    elif command == 'shuffle':
-        await tk_spotify.playback_shuffle(not playback_state.shuffle_state, **tk_player_args)
-        # delay (even more) for shuffle to become active and then inform qudio-display of the change
-        await asyncio.sleep(1)
-        Path(qudiolib.LIBRESPOT_EVENT_FULLNAME).touch(exist_ok=True)
-
-    else:
-        raise KeyError('command')
-
-
 async def scan_qrcode_async(channel, event_time):  # need args, _ does not seem to work???
 
     logging.info('Photo sensor active, activating light and camera')
@@ -262,7 +217,7 @@ async def scan_qrcode_async(channel, event_time):  # need args, _ does not seem 
 
         if qr_code.startswith("spotify:playlist:") or qr_code.startswith("spotify:album:"):
             await play_sound_start_async(SOUND_SCAN_OK)
-            await spotify_command_async('start_context', context=qr_code)
+            await qudiolib.player_start_context(context=qr_code)
             qr_valid = True
         else:
             logging.warning(f"Invalid QR Code: {qr_code}")

@@ -49,11 +49,11 @@ async def main_async():
                 logging.debug(f'update_metadata: {update_metadata}, update_metadata_last_time: {update_metadata_last_time} (now: {now})')
                 if update_metadata:
                     update_metadata_last_time = spot_state.metadata_updated_at
-                    display.update_metadata(spot_state.artist, spot_state.title, False) # TBD shuffle state
+                    display.update_metadata(spot_state.artist or '', spot_state.title or '', spot_state.shuffle)
 
-                if spot_state.track_started_at is not None:
-                    position_secs = time.time() - spot_state.track_started_at if spot_state.is_playing else spot_state.position
-                    display.update_position(position_secs, spot_state.duration or -1)
+                current_position_secs = qudiolib.get_current_position_secs()
+                if current_position_secs is not None:
+                    display.update_position(current_position_secs, spot_state.duration or -1)
 
             display.update_other()
 
