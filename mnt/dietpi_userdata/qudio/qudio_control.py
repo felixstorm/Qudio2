@@ -74,7 +74,7 @@ async def main_async(tk_spotify_arg, tk_player_args_arg):
             except:
                 ir_remote = None
         else:
-            ir_remote = evdev.InputDevice('/dev/input/by-path/platform-i8042-serio-0-event-kbd')
+            ir_remote = evdev.InputDevice('/dev/input/by-path/pci-0000:c1:00.3-usbv2-0:4.3:1.2-event-kbd')
         logging.info("IR remote: %s", ir_remote)
 
         if not qudiolib.spot_get_is_playing():

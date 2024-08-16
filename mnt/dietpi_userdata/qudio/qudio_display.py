@@ -236,12 +236,12 @@ class DisplayHelper:
         self.oled_draw.text((x, y), text, fill='white', font=font)
 
     def text_ra(self, text, line=None, y=None, font=None):
-        textsize = self.oled_draw.textsize(text, font=font)
-        self.text(text, line=line, x=128-textsize[0], y=y, font=font)
+        textlength = self.oled_draw.textlength(text, font=font)
+        self.text(text, line=line, x=128-textlength, y=y, font=font)
 
     def text_ca(self, text, line=None, y=None, font=None):
-        textsize = self.oled_draw.textsize(text, font=font)
-        self.text(text, line=line, x=64-textsize[0]/2, y=y, font=font)
+        textlength = self.oled_draw.textlength(text, font=font)
+        self.text(text, line=line, x=64-textlength/2, y=y, font=font)
 
     def get_local_ip(self):
         st = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
