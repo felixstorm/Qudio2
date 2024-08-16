@@ -1,17 +1,19 @@
 #!/bin/bash
 set -euxo pipefail
 
+QUDIO_INI="$(realpath $(dirname $BASH_SOURCE))/qudio_${1:-testdev}.ini"
+SPOTIFY_DEVICE_NAME=$(awk -F "=" '/SPOTIFY_DEVICE_NAME/ {print $2}' "$QUDIO_INI")
+
+LIBRESPOT_CACHE="$(realpath $(dirname $BASH_SOURCE))/.librespot_cache"
+mkdir -p "$LIBRESPOT_CACHE"
+cp "$(dirname $BASH_SOURCE)/librespot_cached_credentials_${1:-testdev}.json" "$LIBRESPOT_CACHE/credentials.json"
+
 pushd $(dirname $BASH_SOURCE)
 
-SPOTIFY_DEVICE_NAME=$(awk -F "=" '/SPOTIFY_DEVICE_NAME/ {print $2}' qudio_testdev.ini)
-SPOTIFY_USERNAME=$(awk -F "=" '/SPOTIFY_USERNAME/ {print $2}' qudio_testdev.ini)
-SPOTIFY_PASSWORD=$(awk -F "=" '/SPOTIFY_PASSWORD/ {print $2}' qudio_testdev.ini)
-
 ./librespot_x86-64 \
-    --name ${SPOTIFY_DEVICE_NAME} \
-    --username ${SPOTIFY_USERNAME} \
-    --password ${SPOTIFY_PASSWORD} \
-    --onevent $PWD/../mnt/dietpi_userdata/qudio/librespot_hook.sh \
-    --initial-volume 30
+    --name "$SPOTIFY_DEVICE_NAME" \
+    --cache "$LIBRESPOT_CACHE" \
+    --onevent "$PWD/../mnt/dietpi_userdata/qudio/librespot_hook.sh" \
+    --initial-volume 70
 
 popd
