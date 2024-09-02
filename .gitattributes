@@ -1,3 +1,4 @@
 opt/librespot/librespot filter=lfs diff=lfs merge=lfs -text
+.develop/librespot-auth-x86_64-linux-musl-static/librespot-auth filter=lfs diff=lfs merge=lfs -text
 .develop/librespot_x86-64 filter=lfs diff=lfs merge=lfs -text
 .media/*.jpg filter=lfs diff=lfs merge=lfs -text
