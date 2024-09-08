@@ -8,3 +8,6 @@
 
 /librespot_credentials*.json
 /qudio*.ini
+
+/go-librespot-config*.yml
+/go-librespot-credentials*.json

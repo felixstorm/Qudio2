@@ -1,5 +1,4 @@
-/librespot
-/.librespot_cache
+/go-librespot
 /librespot_credentials*.json
 /qudio*.ini
 /QR-Code*.pdf
