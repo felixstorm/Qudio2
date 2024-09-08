@@ -18,7 +18,14 @@ ssh $ssh_target 'mount -o remount,rw /'
 
 # /boot has already been copied manually before
 rsync_includes=('/etc/***' '/mnt/***' '/opt/***' '/var/***')
-rsync_excludes=('*/__pycache__/' '/mnt/dietpi_userdata/qudio/pyvenv.cfg' '/mnt/dietpi_userdata/qudio/bin' '/mnt/dietpi_userdata/qudio/include' '/mnt/dietpi_userdata/qudio/lib' '/mnt/dietpi_userdata/qudio/lib64')
+rsync_excludes=(
+    '*/__pycache__/'
+    '/mnt/dietpi_userdata/qudio/pyvenv.cfg'
+    '/mnt/dietpi_userdata/qudio/bin'
+    '/mnt/dietpi_userdata/qudio/include'
+    '/mnt/dietpi_userdata/qudio/lib'
+    '/mnt/dietpi_userdata/qudio/lib64'
+)
 # -a would mess up permissions and ownership
 rsync -rlt -vh \
     "${rsync_excludes[@]/#/--exclude=}" \

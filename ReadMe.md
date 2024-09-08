@@ -72,7 +72,7 @@ Since my time is pretty limited, this is meant primarily to make a personal proj
   - Create the file `mnt/dietpi_userdata/qudio/qudio.ini` from `qudio.ini.sample`. This is where you get the required values from:
     - `SPOTIFY_DEVICE_NAME`: The name that `librespot` will use to advertise its services - choose as you like.
     - `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`: You will need to register your own Spotify developer application (only "Web API" access required) to get these values. Ensure that the values for the redirect url are the same in the Spotify developer application as well as in `qudio.ini`. The example URL `https://example.com/callback` works well and can be kept as is.
-    - `SPOTIFY_USER_REFRESH`: To create the Spotify refresh token you need to enter all the other information into `qudio.ini` and can then can use the command `python3 -c 'import mnt.dietpi_userdata.qudio.qudiolib as qudiolib; qudiolib.spot_create_refresh_token()'` on **your development machine** as it will bring up a web browser where you will need to confirm that the created Spotify developer application is allowed to interact with your spotify account.
+    - `SPOTIFY_USER_REFRESH`: To create the Spotify refresh token you need to enter all the other information into `qudio.ini` and can then can use the command `python3 -c 'import qudiolib; qudiolib.spot_create_refresh_token()'` on **your development machine** as it will bring up a web browser where you will need to confirm that the created Spotify developer application is allowed to interact with your spotify account.
   - WIP: As [Spotify authentication with username and password does not work anymore](https://github.com/librespot-org/librespot/issues/1308), we currently need to provide a file with cached credentials for librespot to work. The file can most easily be created by running librespot locally on your development machine, playing music on it once using any Spotify client (e. g. mobile phone, but ensure to use the correct Spotify account!) and then saving the resulting `credentials.json` from the librespot cache to `mnt/dietpi_userdata/qudio/librespot_cached_credentials.json`.
   - From your Linux box, run `.develop/push_to_device.sh 192.168.x.y` to copy the files to the Raspberry Pi Zero and to automatically run the script `install.sh` there after copying.
   - Reboot RPi to see if everything works (connect with SSH/Putty): `systemctl reboot`
@@ -88,14 +88,14 @@ Connect to device using SSH (or Putty), then enter the following commands:
 ```bash
 # First remount both root and boot file systems read-write
 mount -o rw,remount /; mount -o rw,remount /boot
-# Then run `dietpi-update` to upgrade DietPi and APT packages
+# Then run `dietpi-update` to upgrade DietPi and APT packages (skip reboot)
 dietpi-update
 # Upgrade Python `pip` to latest version
 /usr/bin/python3 -m pip install --upgrade pip
 # Show outdated Python packages
 pip list --outdated
 # Upgrade outdated Python packages, might need to run this twice to update (almost) all
-pip list --outdated --format=freeze | grep -v '^\-e' | cut -d = -f 1  | xargs -n1 pip install -U
+pip list --outdated --format=json | /usr/bin/python3 -c "import json, sys; print('\n'.join([x['name'] for x in json.load(sys.stdin)]))" | xargs -n1 pip install -U
 # Now reboot
 systemctl reboot
 ```

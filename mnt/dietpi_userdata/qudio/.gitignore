@@ -3,3 +3,8 @@
 /include
 /lib
 /lib64
+
+*.pyc
+
+/librespot_credentials*.json
+/qudio*.ini

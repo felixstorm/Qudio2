@@ -21,6 +21,10 @@ if [ -e /etc/systemd/system/spotifyd.service ]; then
   rm -f /etc/systemd/system/spotifyd.service
   rm -rf /etc/systemd/system/spotifyd.service.d
 fi
+if [ -e /etc/systemd/system/librespot-java.service ]; then
+  systemctl stop librespot-java.service
+  rm -rf /etc/systemd/system/librespot-java.service*
+fi
 rm -f /var/www/index.nginx-debian.html
 
 
