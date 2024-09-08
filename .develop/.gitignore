@@ -1,6 +1,6 @@
 /librespot
 /.librespot_cache
+/librespot_credentials*.json
 /qudio*.ini
-/librespot_cached_credentials*.json
 /QR-Code*.pdf
 *.bak

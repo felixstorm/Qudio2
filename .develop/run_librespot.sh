@@ -6,7 +6,7 @@ SPOTIFY_DEVICE_NAME=$(awk -F "=" '/SPOTIFY_DEVICE_NAME/ {print $2}' "$QUDIO_INI"
 
 LIBRESPOT_CACHE="$(realpath $(dirname $BASH_SOURCE))/.librespot_cache"
 mkdir -p "$LIBRESPOT_CACHE"
-cp "$(dirname $BASH_SOURCE)/librespot_cached_credentials_${1:-testdev}.json" "$LIBRESPOT_CACHE/credentials.json"
+cp "$(dirname $BASH_SOURCE)/librespot_credentials_${1:-testdev}.json" "$LIBRESPOT_CACHE/credentials.json"
 
 pushd $(dirname $BASH_SOURCE)
 

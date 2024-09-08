@@ -11,7 +11,7 @@ WorkingDirectory=/mnt/dietpi_userdata/qudio
 # network-online.target has alread been reached and therefore will not be included in the ifup check
 ExecStartPre=/bin/sh -c 'until ping -c1 spotify.com; do sleep 1; done;'
 
-ExecStartPre=/bin/sh -c 'mkdir -p /tmp/librespot-cache && cp /mnt/dietpi_userdata/qudio/librespot_cached_credentials.json /tmp/librespot-cache/credentials.json'
+ExecStartPre=/bin/sh -c 'mkdir -p /tmp/librespot-cache && cp /mnt/dietpi_userdata/qudio/librespot_credentials.json /tmp/librespot-cache/credentials.json'
 
 # get device name, username and password
 EnvironmentFile=/mnt/dietpi_userdata/qudio/qudio.ini
