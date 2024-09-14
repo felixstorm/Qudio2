@@ -2,7 +2,7 @@ function getParameterByName(name, url) {
 	if (!url) url = window.location.href;
 	name = name.replace(/[\[\]]/g, "\\$&");
 	var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)", "i"),
-	results = regex.exec(url);
+		results = regex.exec(url);
 	if (!results) return null;
 	if (!results[2]) return '';
 	return decodeURIComponent(results[2].replace(/\+/g, " "));
@@ -27,7 +27,7 @@ function setCookie(name, value) {
 function formatSeconds(seconds) {
 	var s = Math.floor(seconds % 60);
 	var m = Math.floor((seconds / 60) % 60);
-	var u = Math.floor(((seconds / 60) / 60 ) % 60);
+	var u = Math.floor(((seconds / 60) / 60) % 60);
 	if (u > 0 && m < 10) {
 		m = '0' + m;
 	}
