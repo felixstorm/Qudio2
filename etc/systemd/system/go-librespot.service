@@ -5,19 +5,12 @@ After=network-online.target sound.target
 
 [Service]
 User=qudio
-WorkingDirectory=/mnt/dietpi_userdata/qudio
 
 # DietPi network detection is not reliable as of 2021-10-31 since wlan0 seems to only be _detected_ after
 # network-online.target has alread been reached and therefore will not be included in the ifup check
 ExecStartPre=/bin/sh -c 'until ping -c1 spotify.com; do sleep 1; done;'
 
-# backend, mixer, alsa-mixer-control and alsa-mixer-device are required for our asound.conf
-# bitrate 96 kbps is enough, dithering is not required and takes a few more CPU cycles
-# enable-volume-normalisation sounds helpful and does not seem to take CPU cycles
-# normalisation-method basic is required as with dynamic (the default) it starts to stutter quite often
-ExecStart=/opt/go-librespot/go-librespot \
-    -config_path go-librespot-config.yml \
-    -credentials_path go-librespot-credentials.json
+ExecStart=/opt/go-librespot/go-librespot.sh
 
 Restart=always
 RestartSec=3

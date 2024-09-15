@@ -58,7 +58,7 @@ rm -rf /var/tmp/dietpi/logs; ln -s /tmp /var/tmp/dietpi/logs
 
 
 # apt packages
-APT_PACKAGES="libogg0 libvorbis0a libvorbisenc2 fswebcam zbar-tools libopenjp2-7 ir-keytable" # libopenjp2-7 is for luma.oled
+APT_PACKAGES="libogg0 libvorbis0a libvorbisenc2 fswebcam zbar-tools libopenjp2-7 ir-keytable gettext" # libopenjp2-7 is for luma.oled
 if ! dpkg -s $APT_PACKAGES >/dev/null 2>&1; then
     apt install -y $APT_PACKAGES
 else

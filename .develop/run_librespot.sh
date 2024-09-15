@@ -1,19 +1,13 @@
 #!/bin/bash
 set -euxo pipefail
 
-QUDIO_INI="$(realpath $(dirname $BASH_SOURCE))/qudio_${1:-testdev}.ini"
-SPOTIFY_DEVICE_NAME=$(awk -F "=" '/SPOTIFY_DEVICE_NAME/ {print $2}' "$QUDIO_INI")
+THIS_DIR="$(realpath $(dirname "$BASH_SOURCE"))"
+QUDIO_DIR="${THIS_DIR}/../mnt/dietpi_userdata/qudio"
 
-LIBRESPOT_CACHE="$(realpath $(dirname $BASH_SOURCE))/.librespot_cache"
-mkdir -p "$LIBRESPOT_CACHE"
-cp "$(dirname $BASH_SOURCE)/librespot_credentials_${1:-testdev}.json" "$LIBRESPOT_CACHE/credentials.json"
+export QUDIO_INI="${THIS_DIR}/qudio-${1:-testdev}.ini"
+export GLS_CREDS_JSON="${THIS_DIR}/go-librespot-credentials-${1:-testdev}.json"
+export GLS_CONFIG_TMPL="${QUDIO_DIR}/go-librespot-config.yml.tmpl"
+export GO_LIBRESPOT="${THIS_DIR}/go-librespot-x86_64"
+export GLS_CONFIG_EXTRA="log_level: debug"
 
-pushd $(dirname $BASH_SOURCE)
-
-./librespot_x86-64 \
-    --name "$SPOTIFY_DEVICE_NAME" \
-    --cache "$LIBRESPOT_CACHE" \
-    --onevent "$PWD/../mnt/dietpi_userdata/qudio/librespot_hook.sh" \
-    --initial-volume 70
-
-popd
+"${THIS_DIR}/../opt/go-librespot/go-librespot.sh"
