@@ -2,108 +2,107 @@
 
 # based on http://www.tilman.de/projekte/qudio
 
-import configparser
+import asyncio
 import logging
+from collections import namedtuple
 import os
 import time
 
-import tekore as tk
+import aiohttp
 
 
 # Configuration
-this_dir = os.path.dirname(__file__)
 IS_RPI = os.path.isdir("/boot/dietpi")
-QUDIO_INI_FILE = os.getenv('QUDIO_INI', os.path.join(this_dir, "qudio.ini"))
-LIBRESPOT_EVENT_FOLDER = "/tmp/librespot"
-LIBRESPOT_EVENT_FULLNAME = os.path.join(LIBRESPOT_EVENT_FOLDER, "event")
 
 
-def spot_create_refresh_token():
-    # Helper to create refresh token from Spotify API
-    # MUST BE RUN LOCALLY AND INTERACTIVELY ON A DEVELOPER MACHINE AS IT WILL OPEN A WEB BROWSER!!!
-    # QUDIO_INI=.develop/qudio_xxx.ini python3 -c 'import mnt.dietpi_userdata.qudio.qudiolib as qudiolib; qudiolib.spot_create_refresh_token()'
-    tk_conf = [c.strip('"') for c in tk.config_from_file(QUDIO_INI_FILE, "tekore", return_refresh=True)]
-    token = tk.prompt_for_user_token(*tk_conf[:3], scope=tk.scope.every)
-    print(f"Received the following refresh token from Spotify: {token.refresh_token}")
-
-
-def spot_get_spotify():
-    # connect to Spotify Web API
-    tk_conf = [c.strip('"') for c in tk.config_from_file(QUDIO_INI_FILE, "tekore", return_refresh=True)]
-    tk_token = tk.refresh_user_token(*tk_conf[:2], tk_conf[3])
-    tk_spotify = tk.Spotify(tk_token, asynchronous=True)
-    return tk_spotify
-
-
-async def spot_get_player_id_async(tk_spotify):
-    # get local Spotify Connect device name
-    config = configparser.ConfigParser()
-    config.read(QUDIO_INI_FILE)
-    local_player_name = config["librespot"]["SPOTIFY_DEVICE_NAME"].strip('"') or "Librespot"
-    logging.info(f"Found local Spotify Connect Player name to be '{local_player_name}'")
-
-    for try_count in reversed(range(15)):
-        tk_devices = await tk_spotify.playback_devices()
-        logging.info("Currently Active Spotify Connect Devices:")
-        for tk_device in tk_devices:
-            logging.info(tk_device)
-        tk_local_device = next((x for x in tk_devices if x.name == local_player_name), None)
-        if tk_local_device is not None:
+# based on https://stackoverflow.com/a/55185488/14226388
+async def run_forever(coro, restart_delay, *args, **kwargs):
+    while True:
+        try:
+            await coro(*args, **kwargs)
+        except (asyncio.CancelledError, SystemExit):
             break
-        error_message = f"Unable to find local Spotify Connect device named '{local_player_name}'"
-        if try_count == 0:
-            raise Exception(error_message)
-        logging.error(f"{error_message}, delaying and retrying...")
-        time.sleep(1)
-
-    logging.info(f"Using Spotify Connect device '{tk_local_device.name}' with id {tk_local_device.id}")
-    return tk_local_device.id
+        except BaseException as err:
+            logging.exception(err)
+        await asyncio.sleep(restart_delay)
 
 
-async def spot_get_player_args_async(tk_spotify):
-    tk_player_id = await spot_get_player_id_async(tk_spotify)
-    tk_player_args = {"device_id": tk_player_id}
-    return tk_player_args
+class QudioPlayerGoLibreSpot:
+
+    def __init__(self):
+        self.callbacks = []
+        self.State = namedtuple('State', ['is_playing', 'position', 'duration', 'started_at', 'shuffle', 'title', 'artist'])
+        self.session = aiohttp.ClientSession("http://localhost:3678")
 
 
-def spot_get_local_status():
-    event = position = duration = started_at = None
-    try:
-        with open(LIBRESPOT_EVENT_FULLNAME, "r") as file:
-            for index, line in enumerate(file):
-                line = line.strip()
-                if index == 0:
-                    event = line
-                elif index == 1 and line != "" and line != "0":  # position is sometimes written as 0 even though the song is already playing in the middle
-                    position = float(line) / 1000
-                elif index == 2 and line != "":
-                    duration = float(line) / 1000
-        if position is not None:
-            started_at = os.path.getmtime(LIBRESPOT_EVENT_FULLNAME) - position
-    except FileNotFoundError:
-        pass
-    except BaseException as err:
-        logging.warning(f"Unexpected {type(err)}: {err}")
-    is_playing = event == "start" or event == "play" or event == "change" or event == "endoftrack" # spotifyd
-    is_playing |= event == "started" or event == "playing" or event == "changed"                   # librespot
-    logging.debug(
-        f"spot_get_local_status(): event: '{event}', is_playing: {is_playing}, position: {position}, started_at: {started_at}, duration: {duration}")
-    return is_playing, position, duration, started_at
+    async def __aenter__(self):
+        await self.session.__aenter__()
+        self.websocket_task = asyncio.create_task(run_forever(self.websocket_task_runner, 1)),
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        # self.websocket_task.cancel() # TBD: throws exception???
+        await self.session.__aexit__(exc_type, exc_value, traceback)
 
 
-def spot_get_is_playing():
-    return spot_get_local_status()[0]
+    def add_callback(self, callback):
+        self.callbacks.append(callback)
+
+    async def websocket_task_runner(self):
+        async with self.session.ws_connect('/events') as ws:
+            async for msg in ws:
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    data = msg.json()
+                    logging.debug(f"websocket_task_runner(): data: {data}")
+                    for callback in self.callbacks:
+                        callback(data)
+                elif msg.type in {aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR}:
+                    break
 
 
-async def spot_get_playback_state_async(tk_spotify, local_device_id=None):
-    playback_state = await tk_spotify.playback()
-    logging.debug(playback_state)
-    if playback_state is not None:
-        logging.debug(playback_state.item)
+    async def get_state(self):
+        is_playing = position = duration = started_at = shuffle = artist = title = None
+        async with self.session.get("/status") as resp:
+            result = await resp.json()
+            logging.debug(f"get_is_playing(): result: {result}")
+            is_playing = result["paused"] == False and result["stopped"] == False
+            shuffle = result["shuffle_context"]
+            track = result["track"]
+            if track is not None:
+                if is_playing:
+                    position = track["position"] / 1000
+                    started_at = time.time() - position
+                duration = track["duration"] / 1000
+                title = track["name"]
+                artist_names = track["artist_names"]
+                artist = artist_names[0] if artist_names is not None and len(artist_names) >= 1 else ""
+        return self.State(is_playing, position, duration, started_at, shuffle, title, artist)
 
-    playback_state_device_id = playback_state and playback_state.device and playback_state.device.id
-    logging.debug(f"local_device_id: '{local_device_id}', playback_state_device_id: {playback_state_device_id}")
-    if playback_state_device_id != local_device_id:
-        return None
 
-    return playback_state
+    async def playback_start_context(self, context):
+        async with self.session.post("/player/play", json={"uri": context}):
+            pass
+
+    async def playback_pause(self):
+        async with self.session.post("/player/pause"):
+            pass
+
+    async def playback_resume(self):
+        async with self.session.post("/player/resume"):
+            pass
+
+    async def playback_previous(self):
+        async with self.session.post("/player/prev"):
+            pass
+
+    async def playback_next(self):
+        async with self.session.post("/player/next"):
+            pass
+
+    async def playback_seek(self, seek_pos_ms):
+        async with self.session.post("/player/seek", json={"position": seek_pos_ms}):
+            pass
+
+    async def playback_shuffle(self, shuffle_state):
+        async with self.session.post("/player/shuffle_context", json={"shuffle_context": shuffle_state}):
+            pass
