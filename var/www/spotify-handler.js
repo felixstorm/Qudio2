@@ -846,10 +846,8 @@ var spotifyHandler = {
 			navigator.mediaSession.playbackState = "none";
 		}
 
-		// spotifyRefreshTokenResult gets created dynamically on the server by spotify-refresh-token.php
+		// spotifyAccessTokenResult gets created dynamically on the server by spotify-access-token.php
 		// For now there is no mechanism to refresh it on the client but that's ok for us
-		spotifyHandler.expires = new Date().getTime() + (parseInt(spotifyRefreshTokenResult["expires_in"]) * 1000);
-		setInterval(spotifyHandler.checkAccessToken, 1000);
 		setInterval(spotifyHandler.refreshDevices, 5000);
 		setInterval(spotifyHandler.setCurrentlyPlaying, 1000);
 		setTimeout(function () {
@@ -859,7 +857,7 @@ var spotifyHandler = {
 				}
 			}, 1000);
 		}, 500);
-		spotifyHandler.api.setAccessToken(spotifyRefreshTokenResult["access_token"]);
+		spotifyHandler.api.setAccessToken(spotifyAccessTokenResult["token"]);
 		pageHandler.showPage("playerpage");
 		spotifyHandler.setCurrentlyPlaying();
 		spotifyHandler.refreshDevices();
