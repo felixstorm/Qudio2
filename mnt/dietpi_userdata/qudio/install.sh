@@ -30,6 +30,7 @@ if [ -e /etc/systemd/system/librespot.service ]; then
   rm -rf /etc/systemd/system/librespot.service*
 fi
 rm -f /var/www/index.nginx-debian.html
+rm -rf /opt/librespot
 
 
 # librespot needs a user (with shell for the hook)
@@ -76,7 +77,7 @@ fi
 
 
 # Python packages and compileall
-PIP_PACKAGES="luma.oled evdev"
+PIP_PACKAGES="luma.oled evdev aiohttp"
 if [[ $(pip3 show $PIP_PACKAGES 3>&1 2>&3 1>/dev/null) != "" ]]; then
   pip3 install $PIP_PACKAGES
 else
