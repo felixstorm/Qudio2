@@ -5,7 +5,6 @@ from datetime import datetime
 from enum import Enum
 import logging
 import os
-from pathlib import Path
 import socket
 import time
 
@@ -29,8 +28,7 @@ async def main_async(qudio_player):
 
     display_player_info_at = 0
 
-    spot_is_playing_last = False
-    spot_is_playing_last_time = 0
+    is_playing_last_time = 0
     update_metadata_last_time = 0
 
     display = DisplayHelper()
@@ -47,11 +45,9 @@ async def main_async(qudio_player):
 
             player_state = await qudio_player.get_state()
             if player_state.is_playing:
-                spot_is_playing_last_time = now
-            player_is_alive = spot_is_playing_last_time + 30 > now
-
-            logging.debug(
-                f'player_state.is_playing: {player_state.is_playing} (was: {spot_is_playing_last}), spot_is_playing_last_time: {spot_is_playing_last_time} (now: {now}), player_is_alive: {player_is_alive}')
+                is_playing_last_time = now
+            player_is_alive = is_playing_last_time + 30 > now
+            logging.debug(f'is_playing: {player_state.is_playing}, is_playing_last_time: {is_playing_last_time} (now: {now}), player_is_alive: {player_is_alive}')
 
             display.set_mode(DisplayHelper.Mode.PLAYER if player_is_alive else DisplayHelper.Mode.STANDBY)
 
@@ -59,8 +55,7 @@ async def main_async(qudio_player):
 
                 update_metadata = (display_player_info_at > 0 and now >= display_player_info_at) or \
                     now > update_metadata_last_time + 10
-                logging.debug(
-                    f'update_metadata: {update_metadata}, display_player_info_at: {display_player_info_at}, update_metadata_last_time: {update_metadata_last_time} (now: {now})')
+                logging.debug(f'update_metadata: {update_metadata}, display_player_info_at: {display_player_info_at}, update_metadata_last_time: {update_metadata_last_time} (now: {now})')
                 if update_metadata and player_state.artist is not None and player_state.title is not None:
                     display.update_metadata(player_state.artist, player_state.title, player_state.shuffle)
                     display_player_info_at = 0  # just in case this was our trigger
@@ -70,8 +65,6 @@ async def main_async(qudio_player):
                     display.update_position(player_state.position, player_state.duration)
 
             display.update_other()
-
-            spot_is_playing_last = player_state.is_playing
 
             next_frame_delay = 1 - (time.time() - now)
             if next_frame_delay >= 0:
