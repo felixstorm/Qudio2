@@ -96,7 +96,7 @@ class DisplayHelper:
         self.oled_image = Image.new(self.oled_device.mode, self.oled_device.size, 'black')
         self.oled_draw = ImageDraw.Draw(self.oled_image)
         self.lh = 11
-        self.default_font = None  # TBD ImageFont.truetype(DEFAULT_FONT_PATH, 11)
+        self.default_font = ImageFont.load_default_imagefont() # The new (TrueType) default font seems to be missing German umlauts, so we enforce the old image font
         self.clock_font = ImageFont.truetype(CLOCK_FONT_PATH, 48)
 
     def set_mode(self, new_mode):
@@ -193,10 +193,14 @@ class DisplayHelper:
         self.oled_draw.text((x, y), text, fill='white', font=font)
 
     def text_ra(self, text, line=None, y=None, font=None):
+        if font is None:
+            font = self.default_font
         textlength = self.oled_draw.textlength(text, font=font)
         self.text(text, line=line, x=128-textlength, y=y, font=font)
 
     def text_ca(self, text, line=None, y=None, font=None):
+        if font is None:
+            font = self.default_font
         textlength = self.oled_draw.textlength(text, font=font)
         self.text(text, line=line, x=64-textlength/2, y=y, font=font)
 
