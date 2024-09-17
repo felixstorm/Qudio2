@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+  #!/usr/bin/env python3
 
 # based on http://www.tilman.de/projekte/qudio
 
@@ -35,13 +35,12 @@ PIN_SENSOR, PIN_LED = 5, 22
 PIN_PREV, PIN_PLAY, PIN_NEXT = 10, 9, 11
 
 
-async def main_async(tk_spotify_arg, tk_player_args_arg):
+async def main_async(qudio_player_arg):
 
     logging.info(f'Starting')
 
-    global tk_spotify, tk_player_args
-    tk_spotify = tk_spotify_arg
-    tk_player_args = tk_player_args_arg
+    global qudio_player
+    qudio_player = qudio_player_arg
 
     try:
         if qudiolib.IS_RPI:
@@ -74,10 +73,10 @@ async def main_async(tk_spotify_arg, tk_player_args_arg):
             except:
                 ir_remote = None
         else:
-            ir_remote = evdev.InputDevice('/dev/input/by-path/pci-0000:c1:00.3-usbv2-0:4.3:1.2-event-kbd')
+            ir_remote = evdev.InputDevice('/dev/input/event10')
         logging.info("IR remote: %s", ir_remote)
 
-        if not qudiolib.spot_get_is_playing():
+        if not (await qudio_player.get_state()).is_playing:
             await play_sound_start_async(SOUND_STARTUP)
 
         logging.info('Started')
@@ -89,6 +88,8 @@ async def main_async(tk_spotify_arg, tk_player_args_arg):
                 'KEY_CHANNELDOWN': lambda: spotify_command_async('next'),
                 'KEY_MENU':        lambda: spotify_command_async('shuffle'),
                 # development only
+                'KEY_1':     lambda: spotify_command_async('start_context', context='spotify:playlist:37i9dQZEVXbNG2KDcFcKOF'), # "Top Songs Global"
+                'KEY_2':     lambda: spotify_command_async('start_context', context='spotify:playlist:37i9dQZEVXbK8BKKMArIyl'), # "Top Songs Germany"
                 'KEY_LEFT':  lambda: spotify_command_async('previous'),
                 'KEY_SPACE': lambda: spotify_command_async('play_pause'),
                 'KEY_RIGHT': lambda: spotify_command_async('next'),
@@ -191,40 +192,37 @@ async def play_sound_start_async(wavFile):
 async def spotify_command_async(command, context=None, seconds=None):
     logging.info(f"Sending command '{command}' (context='{context}', seconds={seconds}) to Spotify")
 
-    if command in ['seek_delta', 'shuffle']:
-        playback_state = await qudiolib.spot_get_playback_state_async(tk_spotify, tk_player_args["device_id"])
-        if not playback_state:
-            return
+    if command in ['play_pause', 'seek_delta', 'shuffle']:
+        player_state = await qudio_player.get_state()
 
     if command == 'start_context':
-        await tk_spotify.playback_start_context(context, **tk_player_args)
+        await qudio_player.playback_start_context(context)
 
     elif command == 'play_pause':
-        if qudiolib.spot_get_is_playing():
-            await tk_spotify.playback_pause(**tk_player_args)
+        if player_state.is_playing:
+            await qudio_player.playback_pause()
         else:
-            await tk_spotify.playback_resume(**tk_player_args)
+            await qudio_player.playback_resume()
 
     elif command == 'previous':
-        await tk_spotify.playback_previous(**tk_player_args)
+        await qudio_player.playback_previous()
 
     elif command == 'next':
-        await tk_spotify.playback_next(**tk_player_args)
+        await qudio_player.playback_next()
 
     elif command == 'seek_delta':
-        seek_pos_ms = round(playback_state.progress_ms + seconds * 1000)
+        if not player_state.is_playing:
+            return
+        seek_pos_ms = round(player_state.position + seconds * 1000)
         if seek_pos_ms < 0:
-            await tk_spotify.playback_previous(**tk_player_args)
-        elif playback_state.item and playback_state.item.duration_ms and seek_pos_ms > playback_state.item.duration_ms:
-            await tk_spotify.playback_next(**tk_player_args)
+            await qudio_player.playback_previous()
+        elif seek_pos_ms > player_state.duration:
+            await qudio_player.playback_next()
         else:
-            await tk_spotify.playback_seek(seek_pos_ms, **tk_player_args)
+            await qudio_player.playback_seek(seek_pos_ms)
 
     elif command == 'shuffle':
-        await tk_spotify.playback_shuffle(not playback_state.shuffle_state, **tk_player_args)
-        # delay (even more) for shuffle to become active and then inform qudio-display of the change
-        await asyncio.sleep(1)
-        Path(qudiolib.LIBRESPOT_EVENT_FULLNAME).touch(exist_ok=True)
+        await qudio_player.playback_shuffle(not player_state.shuffle)
 
     else:
         raise KeyError('command')

@@ -1,6 +1,6 @@
 [Unit]
 Description=Qudio
-Wants=librespot.service
+Wants=go-librespot.service
 After=network-online.target
 
 [Service]

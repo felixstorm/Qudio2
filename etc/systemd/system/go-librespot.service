@@ -1,0 +1,19 @@
+[Unit]
+Description=Librespot (an open source Spotify client)
+Wants=network-online.target
+After=network-online.target sound.target
+
+[Service]
+User=qudio
+
+# DietPi network detection is not reliable as of 2021-10-31 since wlan0 seems to only be _detected_ after
+# network-online.target has alread been reached and therefore will not be included in the ifup check
+ExecStartPre=/bin/sh -c 'until ping -c1 spotify.com; do sleep 1; done;'
+
+ExecStart=/opt/go-librespot/go-librespot.sh
+
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

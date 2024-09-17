@@ -1,0 +1,14 @@
+device_name: ${SPOTIFY_DEVICE_NAME}
+device_type: speaker
+
+bitrate: 96 # that's enough for the small speakers
+initial_volume: 50
+
+credentials:
+  type: spotify_token
+  spotify_token:
+    username: ${DEVCREDS_USERNAME}
+
+server:
+  enabled: true
+  port: 3678

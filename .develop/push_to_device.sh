@@ -41,5 +41,5 @@ if [ "$target" != "192.168.0.142" ]; then
 fi
 
 if echo $* | grep -E --invert-match "(^|\s)(-n|--no-restart)($|\s)" -q; then
-    ssh $ssh_target 'systemctl stop librespot.service qudio.service; systemctl start qudio.service'
+    ssh $ssh_target 'systemctl stop go-librespot.service qudio.service; systemctl start qudio.service'
 fi
