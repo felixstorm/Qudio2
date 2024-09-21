@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 this_dir = os.path.dirname(__file__)
-# TBD DEFAULT_FONT_PATH = os.path.join(this_dir, "OpenSans-Regular.ttf")
+# OpenType fonts just look ugly here when getting rendered for small sizes so we stick with the default bitmap font for now
 CLOCK_FONT_PATH = os.path.join(this_dir, "OpenSans-SemiBold.ttf")
 
 
